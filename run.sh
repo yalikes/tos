@@ -1,5 +1,9 @@
+#rust-objcopy --strip-all target/riscv64gc-unknown-none-elf/release/tos \
+#        -O binary target/riscv64gc-unknown-none-elf/release/tos.bin
 qemu-system-riscv64 \
             -machine virt \
             -nographic \
-            -bios ../bootloader/rustsbi-qemu.bin \
-            -device loader,file=target/riscv64gc-unknown-none-elf/release/os.bin,addr=0x80200000
+            -m 128M \
+            -bios none \
+            -kernel target/riscv64gc-unknown-none-elf/release/tos \
+            -S -gdb tcp::4321
