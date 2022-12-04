@@ -5,5 +5,5 @@ qemu-system-riscv64 \
             -nographic \
             -m 128M \
             -bios none \
-            -kernel target/riscv64gc-unknown-none-elf/release/tos \
+            -kernel target/riscv64gc-unknown-none-elf/debug/tos \
             -S -gdb tcp::4321
