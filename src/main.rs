@@ -4,6 +4,7 @@
 mod memolayout;
 mod uart;
 mod start;
+mod riscv;
 
 use core::{arch::global_asm, panic::PanicInfo};
 

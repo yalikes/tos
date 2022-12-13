@@ -1,5 +1,5 @@
 use crate::{main, println};
-use core::arch::asm;
+use crate::riscv::{r_mstatus, w_mstatus, };
 
 #[no_mangle]
 static TIMER_SCRATCH: [u8; 5] = [0; 5];
@@ -12,13 +12,5 @@ extern "C" fn start() {
     main();
 }
 
-fn r_mstatus() -> u64 {
-    let mut x: u64;
-    unsafe {
-        asm! {
-            "csrr {x}, mstatus",
-            x = out(reg) x
-        } //volatile by default
-    }
-    x
-}
+
+
