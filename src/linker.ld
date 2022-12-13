@@ -10,9 +10,13 @@ SECTIONS
         .text : {
                 *(.text.entry)
                 *(.text .text.*)
-        }
+                . = ALIGN(4K);
+                _trampoline = .;
+                *(trampsec)
+                . = ALIGN(4K);
+                ASSERT(. - _trampoline == 4K, "error: tranpoline larger than one page");
 
-        . = ALIGN(4K);
+        }
         etext = .;
         srodata = .;
         .rodata : {
