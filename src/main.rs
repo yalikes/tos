@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(alloc_error_handler)]
 
 mod memolayout;
 mod uart;
@@ -29,15 +30,21 @@ pub extern "C" fn main() -> !{
     unsafe{
         ALLOCATOR.lock().init(heap_start as *mut u8, heap_size);
     }
-    let mut v = Vec::new();
-    v.push(12);
     loop {
     }
 
 }
 
 
+
+
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
+    println!("{}", _info);
     loop {}
+}
+
+#[alloc_error_handler]
+fn alloc_error_handler(layout: alloc::alloc::Layout) -> !{
+    panic!("allocation error: {:?}", layout);
 }
