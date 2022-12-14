@@ -43,9 +43,10 @@ SECTIONS
 
         . = ALIGN(4K);
         ebss = .;
-        ekernel = .;
 
         /DISCARD/ : {
                 *(.eh_frame)
         }
+
+        PROVIDE(end = .);
 }
