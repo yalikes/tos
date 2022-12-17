@@ -132,9 +132,9 @@ pub fn w_sie(x: u64){
 }
 
 // Machine-mode Interrupt Enable
-pub const MIE_SEIE: u64 = 1<<9;//external
-pub const MIE_STIE: u64 = 1<<5;//timer
-pub const MIE_SSIE: u64 = 1<<1;//software
+pub const MIE_MEIE: u64 = 1<<11;//external
+pub const MIE_MTIE: u64 = 1<<7;//timer
+pub const MIE_MSIE: u64 = 1<<3;//software
 
 #[inline]
 pub fn r_mie() -> u64{
