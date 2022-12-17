@@ -15,6 +15,7 @@ extern crate alloc;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("trampoline.asm"));
+global_asm!(include_str!("kernelvec.asm"));
 
 #[no_mangle]
 static STACK0: [u8; 4096] = [0; 4096];
