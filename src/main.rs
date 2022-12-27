@@ -3,13 +3,13 @@
 #![feature(alloc_error_handler)]
 
 mod memolayout;
-mod uart;
-mod start;
 mod riscv;
+mod start;
+mod uart;
+mod vm;
 
 use core::{arch::global_asm, panic::PanicInfo};
 use linked_list_allocator::LockedHeap;
-use alloc::{vec, vec::Vec};
 
 extern crate alloc;
 
@@ -24,20 +24,17 @@ static STACK0: [u8; 4096] = [0; 4096];
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 #[no_mangle]
-pub extern "C" fn main() -> !{
+pub extern "C" fn main() -> ! {
     let heap_start = crate::memolayout::get_kernel_end();
     let heap_end = crate::memolayout::PHYSTOP;
     let heap_size = heap_end - heap_start;
-    unsafe{
-        ALLOCATOR.lock().init(heap_start as *mut u8, heap_size);
+    unsafe {
+        ALLOCATOR.lock().init(heap_start, heap_size);
     }
-    loop {
-    }
-
+    vm::kvminit();
+    vm::kvminithart();
+    loop {}
 }
-
-
-
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -46,6 +43,6 @@ fn panic(_info: &PanicInfo) -> ! {
 }
 
 #[alloc_error_handler]
-fn alloc_error_handler(layout: alloc::alloc::Layout) -> !{
+fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
     panic!("allocation error: {:?}", layout);
 }

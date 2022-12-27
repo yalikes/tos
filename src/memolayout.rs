@@ -5,12 +5,19 @@ pub const CLINT: usize = 0x200_0000;
 pub const CLINT_MTIME: usize = CLINT + 0xBFF8;
 
 extern "C" {
-    pub static end: u8;
+    static end: u8;
+    static etext: u8;
 }
 
 pub fn get_kernel_end() -> usize{
     unsafe {
         return (&end as *const u8) as usize;
+    }
+}
+
+pub fn get_etext() -> usize{
+    unsafe {
+        return (&etext as *const u8) as usize;
     }
 }
 

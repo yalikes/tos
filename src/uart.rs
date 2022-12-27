@@ -5,7 +5,7 @@ use spin::Mutex;
 use crate::memolayout;
 
 lazy_static!{
-    pub static ref terminal_writer: Mutex<MmioSerialPort> = Mutex::new(
+    pub static ref TERMINAL_WRITER: Mutex<MmioSerialPort> = Mutex::new(
         unsafe { MmioSerialPort::new(memolayout::UART)
     });
 }
@@ -25,5 +25,5 @@ macro_rules! println {
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments){
     use core::fmt::Write;
-    terminal_writer.lock().write_fmt(args).unwrap();
+    TERMINAL_WRITER.lock().write_fmt(args).unwrap();
 }

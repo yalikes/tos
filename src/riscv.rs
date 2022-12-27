@@ -483,3 +483,39 @@ pub const PTE_U: u64 = 1 << 4; // 1 -> user can access
 
 pub const MAXVA: u64 = 1 << (9 + 9 + 9 + 12 -1);
 
+
+// extract the three 9-bit page table indices from a virtual address.
+pub const PXMASK: u64 = 0x1FF; // 9bits
+#[macro_export]
+macro_rules! PGROUNDDOWN {
+    ($exp: expr) => {
+        $exp & !(PGSIZE - 1)
+    };
+}
+#[macro_export]
+macro_rules! PX {
+    ($level: expr, $va: expr) => {
+        ($va >> (PGSHIFT + ($level * 9))) & PXMASK as usize
+    };
+}
+
+// shift a physical address to the right place for a PTE.
+#[macro_export]
+macro_rules! PTE2PA {
+    ($pte: expr) => {
+        ($pte >> 10) << 12
+    };
+}
+#[macro_export]
+macro_rules! PA2PTE {
+    ($pa: expr) => {
+        ($pa >> 12) << 10
+    };
+}
+
+#[macro_export]
+macro_rules! MAKE_SATP {
+    ($pgtbl_addr:expr) => {
+        SATP_SV39 | ($pgtbl_addr as u64 >> 12);
+    };
+}
