@@ -1,7 +1,7 @@
 use core::alloc::Layout;
 use core::panic;
 
-use crate::memolayout::{get_etext, KERNELBASE, PHYSTOP, UART};
+use crate::memolayout::{get_etext, get_trampoline, KERNELBASE, PHYSTOP, TRAMPOLINE, UART};
 use crate::{riscv::*, ALLOCATOR};
 use crate::{MAKE_SATP, PA2PTE, PGROUNDDOWN, PTE2PA, PX};
 #[repr(C)]
@@ -50,8 +50,9 @@ fn kvmmake(pgtbl: &mut PageTable) {
         PHYSTOP - get_etext(),
         PTE_R | PTE_W,
     );
-
-    // kvmmap(pgtbl, va, pa, sz, perm)
+    // map the trampoline for trap entry/exit to
+    // the highest virtual address in the kernel.
+    kvmmap(pgtbl, TRAMPOLINE, get_trampoline(), PGSIZE, PTE_R | PTE_X)
 }
 
 fn kvmmap(pgtbl: &mut PageTable, va: usize, pa: usize, sz: usize, perm: u64) {
@@ -122,8 +123,6 @@ fn kalloc() -> *mut u8 {
 }
 
 pub fn kvminithart() {
-    w_satp(MAKE_SATP!(unsafe {
-        KERN_PG_ADDR
-    }));
+    w_satp(MAKE_SATP!(unsafe { KERN_PG_ADDR }));
     sfence_vma();
 }
