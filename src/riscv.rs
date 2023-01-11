@@ -51,7 +51,7 @@ pub fn w_mepc(x: u64){
 }
 
 // Supervisor Status Register, sstatus
-pub const SSTATUS_SSP: u64 = 1<<8;
+pub const SSTATUS_SPP: u64 = 1<<8;
 pub const SSTATUS_SPIE: u64 = 1<<5;
 pub const SSTATUS_UPIE: u64 = 1<<4;
 pub const SSTATUS_SIE: u64 = 1<<1;

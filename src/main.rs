@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(alloc_error_handler)]
+#![feature(const_maybe_uninit_zeroed)]
 
 mod memolayout;
 mod riscv;
@@ -8,6 +9,10 @@ mod start;
 mod uart;
 mod vm;
 mod utils;
+mod proc;
+mod params;
+mod trap;
+mod mem_utils;
 
 use core::{arch::global_asm, panic::PanicInfo};
 use linked_list_allocator::LockedHeap;
@@ -17,6 +22,7 @@ extern crate alloc;
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("trampoline.asm"));
 global_asm!(include_str!("kernelvec.asm"));
+global_asm!(include_str!("switch.asm"));
 
 #[no_mangle]
 static STACK0: [u8; 4096] = [0; 4096];
@@ -34,7 +40,11 @@ pub extern "C" fn main() -> ! {
     }
     vm::kvminit();
     vm::kvminithart();
-    loop {}
+    proc::procinit();
+    trap::trapinithart();
+    proc::userinit();
+    println!("userinit finish");
+    proc::scheduler();
 }
 
 #[panic_handler]
