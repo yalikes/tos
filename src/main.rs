@@ -7,6 +7,7 @@ mod riscv;
 mod start;
 mod uart;
 mod vm;
+mod utils;
 
 use core::{arch::global_asm, panic::PanicInfo};
 use linked_list_allocator::LockedHeap;
