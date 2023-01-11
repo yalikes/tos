@@ -1,9 +1,11 @@
 use core::alloc::Layout;
 use core::panic;
 
-use crate::memolayout::{get_etext, KERNELBASE, PHYSTOP, UART};
+use crate::memolayout::{get_etext, KERNELBASE, PHYSTOP, UART, TRAMPOLINE};
+use crate::params::NPROC;
 use crate::{riscv::*, ALLOCATOR};
 use crate::{MAKE_SATP, PA2PTE, PGROUNDDOWN, PTE2PA, PX};
+use crate::mem_utils::memmove;
 #[repr(C)]
 pub struct PageTable {
     ptes: [u64; 512],
@@ -52,6 +54,7 @@ fn kvmmake(pgtbl: &mut PageTable) {
     );
 
     // kvmmap(pgtbl, va, pa, sz, perm)
+    proc_mapstack(pgtbl);
 }
 
 fn kvmmap(pgtbl: &mut PageTable, va: usize, pa: usize, sz: usize, perm: u64) {
@@ -60,11 +63,19 @@ fn kvmmap(pgtbl: &mut PageTable, va: usize, pa: usize, sz: usize, perm: u64) {
     }
 }
 
+fn proc_mapstack(pgtbl: &mut PageTable){
+    for i in 0..NPROC{
+        let pa = kalloc();
+        let va = crate::KSTACK!(i);
+        kvmmap(pgtbl, va, pa as usize, PGSIZE, PTE_R | PTE_W);
+    }
+}
+
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned. Returns true on success, false if walk() couldn't
 // allocate a needed page-table page.
-fn mappages(pgtbl: &mut PageTable, va: usize, pa: usize, sz: usize, perm: u64) -> bool {
+pub fn mappages(pgtbl: &mut PageTable, va: usize, pa: usize, sz: usize, perm: u64) -> bool {
     if sz == 0 {
         panic!("mappages: size of zero");
     }
@@ -111,7 +122,7 @@ fn walk(pgtbl: &mut PageTable, va: usize, alloc: bool) -> Result<&mut u64, ()> {
     Ok(unsafe { &mut (*pgtb_addr)[PX!(0, va)] })
 }
 
-fn kalloc() -> *mut u8 {
+pub fn kalloc() -> *mut u8 {
     unsafe {
         ALLOCATOR
             .lock()
@@ -126,4 +137,22 @@ pub fn kvminithart() {
         KERN_PG_ADDR
     }));
     sfence_vma();
+}
+
+// create an empty user page table.
+
+pub fn uvmcreate() -> *mut PageTable
+{
+  let mut pagetable;
+  pagetable = kalloc() as *mut PageTable;
+  unsafe {(*pagetable).ptes.as_mut_slice().fill(0)};
+  return pagetable;
+}
+
+pub fn uvminit(pgtbl: &mut PageTable, initcode: &[u8]){
+    let sz = initcode.len();
+    let mem = kalloc();
+    mappages(pgtbl, 0, mem as usize, PGSIZE, PTE_W | PTE_R | PTE_X | PTE_U);
+    unsafe{memmove(mem, initcode.as_ptr(), sz)};
+
 }
