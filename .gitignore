@@ -1,3 +1,4 @@
 /target
 /bootloader
 /.vscode
+*.code-workspace
