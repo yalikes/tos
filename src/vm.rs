@@ -8,7 +8,7 @@ use crate::{MAKE_SATP, PA2PTE, PGROUNDDOWN, PTE2PA, PX};
 use crate::mem_utils::memmove;
 #[repr(C)]
 pub struct PageTable {
-    ptes: [u64; 512],
+    pub ptes: [u64; 512],
 }
 // struct
 
@@ -144,8 +144,7 @@ pub fn kvminithart() {
 
 pub fn uvmcreate() -> *mut PageTable
 {
-  let mut pagetable;
-  pagetable = kalloc() as *mut PageTable;
+  let pagetable = kalloc() as *mut PageTable;
   unsafe {(*pagetable).ptes.as_mut_slice().fill(0)};
   return pagetable;
 }

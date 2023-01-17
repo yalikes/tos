@@ -14,6 +14,7 @@ extern "C" {
     fn kernelvec();
     fn trampoline();
     fn uservec();
+    fn userret();
 }
 
 pub fn get_kernel_end() -> usize{
@@ -39,9 +40,12 @@ pub fn get_uservec() -> usize{
     return uservec as usize;
 }
 
+pub fn get_userret() -> usize{
+    return userret as usize;
+}
 
 #[inline]
-pub fn CLINT_MTIMECMP(hartid: u64) -> u64{
+pub fn clint_mtimecmp(hartid: u64) -> u64{
     return (CLINT as u64) + 0x4000 + 8*hartid;
 }
 

@@ -1,11 +1,13 @@
 use core::mem::MaybeUninit;
 use spin::{Mutex, RwLock};
 
-use crate::mem_utils::{slice_cpy};
-use crate::memolayout::{get_trampoline, get_uservec, TRAMPOLINE, TRAPFRAME};
+use crate::mem_utils::slice_cpy;
+use crate::memolayout::{get_trampoline, TRAMPOLINE, TRAPFRAME};
 use crate::params::{NCPU, NPROC};
-use crate::riscv::{r_tp, w_stvec, PGSIZE, PTE_R, PTE_W, PTE_X};
+use crate::riscv::{r_tp, PGSIZE, PTE_R, PTE_W, PTE_X};
 use crate::vm::{kalloc, mappages, uvmcreate, uvminit, PageTable};
+use crate::trap::usertrapret;
+
 // Saved registers for kernel context switches.
 
 pub static mut next_pid: Mutex<i32> = Mutex::new(1);
@@ -13,40 +15,46 @@ pub static mut next_pid: Mutex<i32> = Mutex::new(1);
 pub static mut proc: [RwLock<Proc>; NPROC] = unsafe { MaybeUninit::zeroed().assume_init() }; // because this is convient
 pub static mut cpus: [RwLock<Cpu>; NCPU] = unsafe { MaybeUninit::zeroed().assume_init() };
 
-pub static initcode: [u8; 52] = [
-    0x17, 0x05, 0x00, 0x00, 0x13, 0x05, 0x45, 0x02, 0x97, 0x05, 0x00, 0x00, 0x93, 0x85, 0x35, 0x02,
-    0x93, 0x08, 0x70, 0x00, 0x73, 0x00, 0x00, 0x00, 0x93, 0x08, 0x20, 0x00, 0x73, 0x00, 0x00, 0x00,
-    0xef, 0xf0, 0x9f, 0xff, 0x2f, 0x69, 0x6e, 0x69, 0x74, 0x00, 0x00, 0x24, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
+
+/// riscv64-linux-gnu-gcc -c initcode.S  -o initcode.o
+/// riscv64-linux-gnu-objcopy -S -O binary initcode.o initcode
+/// od -t xC initcode 
+/// copy content of initcode into here
+pub static initcode: [u8; 64] = [
+0x17, 0x05, 0x00, 0x00, 0x03, 0x35, 0x05, 0x00, 0x97, 0x05, 0x00, 0x00, 0x83, 0xb5, 0x05, 0x00,
+0x9d, 0x48, 0x97, 0x00, 0x00, 0x00, 0xe7, 0x80, 0x00, 0x00, 0x73, 0x00, 0x00, 0x00, 0x01, 0xa0,
+0x93, 0x08, 0xa0, 0x02, 0x73, 0x00, 0x00, 0x00, 0xef, 0xf0, 0x9f, 0xff, 0x2f, 0x69, 0x6e, 0x69,
+0x74, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 ];
 
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
+#[repr(C)]
 pub struct Context {
-    ra: u64,
-    sp: u64,
+    pub ra: u64,
+    pub sp: u64,
 
     // callee-saved
-    s0: u64,
-    s1: u64,
-    s2: u64,
-    s3: u64,
-    s4: u64,
-    s5: u64,
-    s6: u64,
-    s7: u64,
-    s8: u64,
-    s9: u64,
-    s10: u64,
-    s11: u64,
+    pub s0: u64,
+    pub s1: u64,
+    pub s2: u64,
+    pub s3: u64,
+    pub s4: u64,
+    pub s5: u64,
+    pub s6: u64,
+    pub s7: u64,
+    pub s8: u64,
+    pub s9: u64,
+    pub s10: u64,
+    pub s11: u64,
 }
 
 // Per-CPU state.
 pub struct Cpu {
-    proc_index: Option<usize>, // The process running on this cpu, or null.
-    context: Context,          // swtch() here to enter scheduler().
-    noff: i32,                 // Depth of push_off() nesting.
-    intena: bool,              // Were interrupts enabled before push_off()?
+    pub proc_index: Option<usize>, // The process running on this cpu, or null.
+    pub context: Context,          // swtch() here to enter scheduler().
+    pub noff: i32,                 // Depth of push_off() nesting.
+    pub intena: bool,              // Were interrupts enabled before push_off()?
 }
 
 // per-process data for the trap handling code in trampoline.S.
@@ -64,45 +72,45 @@ pub struct Cpu {
 // the entire kernel call stack.
 #[allow(dead_code)]
 pub struct Trapframe {
-    /*   0 */ kernel_satp: u64, // kernel page table
-    /*   8 */ kernel_sp: u64, // top of process's kernel stack
-    /*  16 */ kernel_trap: u64, // usertrap()
-    /*  24 */ epc: u64, // saved user program counter
-    /*  32 */ kernel_hartid: u64, // saved kernel tp
-    /*  40 */ ra: u64,
-    /*  48 */ sp: u64,
-    /*  56 */ gp: u64,
-    /*  64 */ tp: u64,
-    /*  72 */ t0: u64,
-    /*  80 */ t1: u64,
-    /*  88 */ t2: u64,
-    /*  96 */ s0: u64,
-    /* 104 */ s1: u64,
-    /* 112 */ a0: u64,
-    /* 120 */ a1: u64,
-    /* 128 */ a2: u64,
-    /* 136 */ a3: u64,
-    /* 144 */ a4: u64,
-    /* 152 */ a5: u64,
-    /* 160 */ a6: u64,
-    /* 168 */ a7: u64,
-    /* 176 */ s2: u64,
-    /* 184 */ s3: u64,
-    /* 192 */ s4: u64,
-    /* 200 */ s5: u64,
-    /* 208 */ s6: u64,
-    /* 216 */ s7: u64,
-    /* 224 */ s8: u64,
-    /* 232 */ s9: u64,
-    /* 240 */ s10: u64,
-    /* 248 */ s11: u64,
-    /* 256 */ t3: u64,
-    /* 264 */ t4: u64,
-    /* 272 */ t5: u64,
-    /* 280 */ t6: u64,
+    /*   0 */ pub kernel_satp: u64, // kernel page table
+    /*   8 */ pub kernel_sp: u64, // top of process's kernel stack
+    /*  16 */ pub kernel_trap: u64, // usertrap()
+    /*  24 */ pub epc: u64, // saved user program counter
+    /*  32 */ pub kernel_hartid: u64, // saved kernel tp
+    /*  40 */ pub ra: u64,
+    /*  48 */ pub sp: u64,
+    /*  56 */ pub gp: u64,
+    /*  64 */ pub tp: u64,
+    /*  72 */ pub t0: u64,
+    /*  80 */ pub t1: u64,
+    /*  88 */ pub t2: u64,
+    /*  96 */ pub s0: u64,
+    /* 104 */ pub s1: u64,
+    /* 112 */ pub a0: u64,
+    /* 120 */ pub a1: u64,
+    /* 128 */ pub a2: u64,
+    /* 136 */ pub a3: u64,
+    /* 144 */ pub a4: u64,
+    /* 152 */ pub a5: u64,
+    /* 160 */ pub a6: u64,
+    /* 168 */ pub a7: u64,
+    /* 176 */ pub s2: u64,
+    /* 184 */ pub s3: u64,
+    /* 192 */ pub s4: u64,
+    /* 200 */ pub s5: u64,
+    /* 208 */ pub s6: u64,
+    /* 216 */ pub s7: u64,
+    /* 224 */ pub s8: u64,
+    /* 232 */ pub s9: u64,
+    /* 240 */ pub s10: u64,
+    /* 248 */ pub s11: u64,
+    /* 256 */ pub t3: u64,
+    /* 264 */ pub t4: u64,
+    /* 272 */ pub t5: u64,
+    /* 280 */ pub t6: u64,
 }
 #[derive(Clone, Copy)]
-enum ProcessState {
+pub enum ProcessState {
     UNUSED,
     USED,
     SLEEPING,
@@ -117,24 +125,24 @@ pub struct Proc {
     // struct spinlock lock;
 
     // p->lock must be held when using these:
-    state: ProcessState, // Process state
+    pub state: ProcessState, // Process state
     // void *chan;                  // If non-zero, sleeping on chan
-    killed: bool, // If non-zero, have been killed
-    xstate: i32,  // Exit status to be returned to parent's wait
-    pid: i32,     // Process ID
+    pub killed: bool, // If non-zero, have been killed
+    pub xstate: i32,  // Exit status to be returned to parent's wait
+    pub pid: i32,     // Process ID
 
     // wait_lock must be held when using this:
-    parent: *mut Proc, // Parent process
+    pub parent: *mut Proc, // Parent process
 
     // these are private to the process, so p->lock need not be held.
-    kstack: u64,               // Virtual address of kernel stack
-    sz: u64,                   // Size of process memory (bytes)
-    pagetable: *mut PageTable, // User page table
-    trapframe: *mut Trapframe, // data page for trampoline.S
-    context: Context,          // swtch() here to run process
+    pub kstack: u64,               // Virtual address of kernel stack
+    pub sz: u64,                   // Size of process memory (bytes)
+    pub pagetable: *mut PageTable, // User page table
+    pub trapframe: *mut Trapframe, // data page for trampoline.S
+    pub context: Context,          // swtch() here to run process
     // struct file *ofile[NOFILE];  // Open files
     // struct inode *cwd;           // Current directory
-    name: [u8; 16], // Process name (debugging)
+    pub name: [u8; 16], // Process name (debugging)
 }
 
 pub fn procinit() {
@@ -171,7 +179,7 @@ pub fn allocproc() -> Option<usize> {
 }
 
 pub fn proc_pagetable(p: &Proc) -> *mut PageTable {
-    let mut pgtable_ptr;
+    let pgtable_ptr;
     pgtable_ptr = uvmcreate();
 
     // map the trampoline code (for system call return)
@@ -197,28 +205,27 @@ pub fn proc_pagetable(p: &Proc) -> *mut PageTable {
     pgtable_ptr
 }
 
+#[allow(unused_variables)]
 pub fn freeproc(i: usize) {
     unimplemented!()
 }
 
 fn get_next_pid() -> i32 {
-    let mut pid = 0;
+    let pid;
     unsafe {
-        pid = *next_pid.lock();
-        *next_pid.lock() += 1;
+        let mut next_pid_guard = next_pid.lock();
+        pid = *next_pid_guard;
+        *next_pid_guard += 1;
     }
     pid
 }
 
 pub fn forkret() {
-    //file system operation not impliment
+    //file system operation not implement
     usertrapret();
 }
 
-pub fn usertrapret() {
-    w_stvec((TRAMPOLINE + (get_uservec() - get_trampoline())) as u64);
-    //not implement
-}
+
 
 pub fn userinit() {
     let proc_index = allocproc().expect("fiiled to alloc proc");
@@ -238,6 +245,15 @@ pub fn cpuid() -> usize {
     return r_tp() as usize;
 }
 
+pub fn procid() -> Option<usize> {
+    //push_off
+    let cpuid = cpuid();
+    let procid = unsafe { cpus[cpuid].read().proc_index };
+
+    //pop_off
+    procid
+}
+
 pub fn scheduler() -> ! {
     let cpuid = cpuid();
     unsafe {
@@ -250,7 +266,10 @@ pub fn scheduler() -> ! {
                     ProcessState::RUNNABLE => {
                         p.state = ProcessState::RUNNING;
                         cpu.proc_index = Some(i);
-                        swtch(&mut cpu.context as *mut Context, &mut p.context as *mut Context);
+                        swtch(
+                            &mut cpu.context as *mut Context,
+                            &mut p.context as *mut Context,
+                        );
                     }
                     _ => {}
                 }
@@ -260,5 +279,5 @@ pub fn scheduler() -> ! {
 }
 
 extern "C" {
-    fn swtch(curr:*mut Context,next: *mut Context);
+    fn swtch(curr: *mut Context, next: *mut Context);
 }

@@ -1,19 +1,16 @@
-# Initial process that execs /init.
-# This code runs in user space.
-
-#include "syscall.h"
-
-# exec(init, argv)
 .globl start
 start:
         la a0, init
         la a1, argv
-        li a7, SYS_exec
+        li a7, 7
+        call inf_loop
         ecall
+inf_loop:
+    j inf_loop
 
 # for(;;) exit();
 exit:
-        li a7, SYS_exit
+        li a7, 42
         ecall
         jal exit
 

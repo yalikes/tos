@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(alloc_error_handler)]
 #![feature(const_maybe_uninit_zeroed)]
+#![allow(dead_code, non_upper_case_globals)]
 
 mod memolayout;
 mod riscv;

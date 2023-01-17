@@ -516,6 +516,6 @@ macro_rules! PA2PTE {
 #[macro_export]
 macro_rules! MAKE_SATP {
     ($pgtbl_addr:expr) => {
-        SATP_SV39 | ($pgtbl_addr as u64 >> 12);
+        SATP_SV39 | ($pgtbl_addr as u64 >> 12)
     };
 }

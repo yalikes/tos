@@ -2,7 +2,7 @@ use core::arch::asm;
 
 use crate::{main, println};
 use crate::riscv::*;
-use crate::memolayout::{CLINT_MTIMECMP, CLINT_MTIME};
+use crate::memolayout::{clint_mtimecmp, CLINT_MTIME};
 
 #[no_mangle]
 static mut TIMER_SCRATCH: [u64; 5] = [0; 5];
@@ -31,7 +31,7 @@ extern "C" fn start() {
     // access to all of physical memory.
     w_pmpaddr0(0x3fffffffffffff);
     w_pmpcfg0(0xf);
-    timerinit();
+    //timerinit();
     let id = r_mhartid();
     w_tp(id);
     unsafe{asm!("mret");}
@@ -41,7 +41,7 @@ extern "C" fn start() {
 fn timerinit(){
     let id = r_mhartid();
     let interval = 1000000; // cycles; about 1/10th second in qemu.
-    let timer_addr: *mut u64 = CLINT_MTIMECMP(id) as *mut u64;
+    let timer_addr: *mut u64 = clint_mtimecmp(id) as *mut u64;
     let mtime_addr: *mut u64 = CLINT_MTIME as *mut u64;
     unsafe {
         *timer_addr = *mtime_addr + interval;
@@ -51,7 +51,7 @@ fn timerinit(){
     // scratch[3] : address of CLINT MTIMECMP register.
     // scratch[4] : desired interval (in cycles) between timer interrupts.
     unsafe{
-        TIMER_SCRATCH[3] = CLINT_MTIMECMP(id);
+        TIMER_SCRATCH[3] = clint_mtimecmp(id);
         TIMER_SCRATCH[4] = interval;
         w_mscratch((&TIMER_SCRATCH as *const u64) as u64);
     }
