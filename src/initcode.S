@@ -3,7 +3,7 @@ start:
         la a0, init
         la a1, argv
         li a7, 7
-        call inf_loop
+#        call inf_loop
         ecall
 inf_loop:
     j inf_loop
