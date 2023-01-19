@@ -14,6 +14,7 @@ mod proc;
 mod params;
 mod trap;
 mod mem_utils;
+mod syscall;
 
 use core::{arch::global_asm, panic::PanicInfo};
 use linked_list_allocator::LockedHeap;

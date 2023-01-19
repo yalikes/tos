@@ -7,6 +7,7 @@ use crate::riscv::{
     r_satp, r_sstatus, r_tp, w_sepc, w_sstatus, w_stvec,
     PGSIZE, SSTATUS_SPIE, SSTATUS_SPP, SATP_SV39, r_sepc, r_scause
 };
+use crate::syscall::syscall;
 
 // set up to take exceptions and traps while in the kernel.
 pub fn trapinithart() {
@@ -74,6 +75,9 @@ pub fn usertrap() {
             
             // an interrupt will change sstatus &c registers,
             // so don't enable until done with those registers.
+            drop(proc_guard);
+            syscall();
         }
     }
+    usertrapret();
 }

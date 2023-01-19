@@ -2,10 +2,10 @@
 start:
         la a0, init
         la a1, argv
-        li a7, 7
-#        call inf_loop
-        ecall
+        li a7, 114
+        j inf_loop
 inf_loop:
+    ecall
     j inf_loop
 
 # for(;;) exit();
