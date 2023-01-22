@@ -5,6 +5,7 @@ run:
 		-nographic \
 		-m 128M \
 		-bios none \
+		-device VGA \
 		-kernel target/riscv64gc-unknown-none-elf/debug/tos
 
 debug:
@@ -14,5 +15,6 @@ debug:
 		-nographic \
 		-m 128M \
 		-bios none \
+		-device VGA \
 		-kernel target/riscv64gc-unknown-none-elf/debug/tos \
 		-S -gdb tcp::4321
