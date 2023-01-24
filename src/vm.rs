@@ -1,9 +1,9 @@
 use core::alloc::Layout;
 use core::panic;
 
-use crate::memolayout::{get_etext, get_trampoline, KERNELBASE, PHYSTOP, TRAMPOLINE, UART};
+use crate::memolayout::{get_etext, get_trampoline, KERNELBASE, PHYSTOP, TRAMPOLINE, UART, PCI_BASE};
 use crate::params::NPROC;
-use crate::{riscv::*, ALLOCATOR};
+use crate::{riscv::*, ALLOCATOR, println};
 use crate::{MAKE_SATP, PA2PTE, PGROUNDDOWN, PTE2PA, PX};
 use crate::mem_utils::memmove;
 #[repr(C)]
@@ -56,6 +56,8 @@ fn kvmmake(pgtbl: &mut PageTable) {
     // the highest virtual address in the kernel.
     kvmmap(pgtbl, TRAMPOLINE, get_trampoline(), PGSIZE, PTE_R | PTE_X);
 
+    // map all PCI device
+    kvmmap(pgtbl, PCI_BASE, PCI_BASE, (1<<12) * (1<<16), PTE_R| PTE_W);
     // kvmmap(pgtbl, va, pa, sz, perm)
     proc_mapstack(pgtbl);
 }

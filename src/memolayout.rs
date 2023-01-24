@@ -5,6 +5,7 @@ pub const KERNELBASE: usize = 0x8000_0000;
 pub const PHYSTOP: usize = KERNELBASE + 128 * 1024 * 1024;
 pub const CLINT: usize = 0x200_0000;
 pub const CLINT_MTIME: usize = CLINT + 0xBFF8;
+pub const PCI_BASE: usize = 0x3000_0000;
 pub const TRAMPOLINE: usize = MAXVA as usize - PGSIZE;
 pub const TRAPFRAME: usize = TRAMPOLINE - PGSIZE;
 

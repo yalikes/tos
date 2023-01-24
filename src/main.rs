@@ -4,17 +4,18 @@
 #![feature(const_maybe_uninit_zeroed)]
 #![allow(dead_code, non_upper_case_globals)]
 
+mod mem_utils;
 mod memolayout;
+mod params;
+mod pci;
+mod proc;
 mod riscv;
 mod start;
-mod uart;
-mod vm;
-mod utils;
-mod proc;
-mod params;
-mod trap;
-mod mem_utils;
 mod syscall;
+mod trap;
+mod uart;
+mod utils;
+mod vm;
 
 use core::{arch::global_asm, panic::PanicInfo};
 use linked_list_allocator::LockedHeap;
@@ -40,12 +41,18 @@ pub extern "C" fn main() -> ! {
     unsafe {
         ALLOCATOR.lock().init(heap_start, heap_size);
     }
+    pci::list_pci(memolayout::PCI_BASE + 1 * 8 * (1 << 12));
+    unsafe {
+        pci::write_vga(memolayout::PCI_BASE + 1 * 8 * (1 << 12));
+    }
     vm::kvminit();
     vm::kvminithart();
     proc::procinit();
     trap::trapinithart();
     proc::userinit();
     println!("userinit finish");
+    //pci::list_pci(memolayout::PCI_BASE+1*8*(1<<12));
+    loop {}
     proc::scheduler();
 }
 
