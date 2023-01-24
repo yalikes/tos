@@ -63,4 +63,6 @@ pub unsafe fn write_vga(addr: usize){
     *bar_0 = bar_0_val;
     println!("{:x}", *bar_0);
     println!("{:x}", bar_0_val);
+    let framebuffer: &mut [u8; 4096] = &mut *(bar_0_val as *mut [u8; 4096]);
+    framebuffer.fill(0x42);
 }

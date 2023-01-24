@@ -2,7 +2,6 @@ run:
 	cargo build
 	qemu-system-riscv64 \
 		-machine virt \
-		-nographic \
 		-m 128M \
 		-bios none \
 		-device VGA \
@@ -12,7 +11,6 @@ debug:
 	cargo build
 	qemu-system-riscv64 \
 		-machine virt \
-		-nographic \
 		-m 128M \
 		-bios none \
 		-device VGA \
