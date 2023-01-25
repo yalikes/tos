@@ -6,6 +6,9 @@ pub const PHYSTOP: usize = KERNELBASE + 128 * 1024 * 1024;
 pub const CLINT: usize = 0x200_0000;
 pub const CLINT_MTIME: usize = CLINT + 0xBFF8;
 pub const PCI_BASE: usize = 0x3000_0000;
+pub const VGA_FRAME_BUFFER: usize = 0x7000_0000;
+pub const VGA_FRAME_BUFFER_SIZE: usize = 16 * 1024 * 1024;
+pub const VGA_MMIO_BASE: usize = VGA_FRAME_BUFFER + VGA_FRAME_BUFFER_SIZE;
 pub const TRAMPOLINE: usize = MAXVA as usize - PGSIZE;
 pub const TRAPFRAME: usize = TRAMPOLINE - PGSIZE;
 
