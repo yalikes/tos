@@ -27,7 +27,7 @@ global_asm!(include_str!("kernelvec.asm"));
 global_asm!(include_str!("switch.asm"));
 
 #[no_mangle]
-static STACK0: [u8; 4096] = [0; 4096];
+static STACK0: [u8; 65536] = [0; 65536];
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
