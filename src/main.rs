@@ -27,7 +27,10 @@ global_asm!(include_str!("kernelvec.asm"));
 global_asm!(include_str!("switch.asm"));
 
 #[no_mangle]
-static STACK0: [u8; 65536] = [0; 65536];
+static STACK0: StackWrapper = StackWrapper([0; 65536]);
+
+#[repr(align(65536))]
+struct StackWrapper([u8; 65536]);
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
