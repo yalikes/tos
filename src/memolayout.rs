@@ -6,8 +6,14 @@ use crate::riscv::{MAXVA, PGSIZE};
 pub const UART: usize = 0x1000_0000;
 pub const KERNELBASE: usize = 0x8000_0000;
 pub const PHYSTOP: usize = KERNELBASE + 128 * 1024 * 1024;
+
+// core local interruptor (CLINT), which contains the timer.
 pub const CLINT: usize = 0x200_0000;
 pub const CLINT_MTIME: usize = CLINT + 0xBFF8;
+
+// qemu puts platform-level interrupt controller (PLIC) here.
+pub const PLIC: usize = 0x0c000000;
+
 pub const TRAMPOLINE: usize = MAXVA as usize - PGSIZE;
 pub const TRAPFRAME: usize = TRAMPOLINE - PGSIZE;
 // virtio mmio interface
@@ -59,4 +65,40 @@ macro_rules! KSTACK {
     ($p: expr) => {
         TRAMPOLINE - ($p + 1) * 2 * PGSIZE
     };
+}
+
+#[inline]
+pub fn plic_priority() -> usize {
+    PLIC + 0x0
+}
+
+#[inline]
+pub fn plic_pending() -> usize {
+    PLIC + 0x1000
+}
+
+#[inline]
+pub fn plic_menable(hart: usize) -> usize {
+    PLIC + 0x2000 + hart * 0x100
+}
+
+#[inline]
+pub fn plic_senable(hart: usize) -> usize {
+    PLIC + 0x2080 + hart * 0x100
+}
+
+pub fn plic_mpriority(hart: usize) -> usize {
+    PLIC + 0x200000 + hart * 0x2000
+}
+
+pub fn plic_spriority(hart: usize) -> usize {
+    PLIC + 0x201000 + hart * 0x2000
+}
+
+pub fn plic_mclaim(hart: usize) -> usize {
+    PLIC + 0x200004 + hart * 0x2000
+}
+
+pub fn plic_sclaim(hart: usize) -> usize {
+    PLIC + 0x201004 + hart * 0x2000
 }

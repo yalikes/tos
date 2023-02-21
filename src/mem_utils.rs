@@ -10,3 +10,9 @@ pub fn slice_cpy<T: Copy>(dst:&mut [T], src: &[T]){
     let len = min(dst.len(), src.len());
     dst[..len].copy_from_slice(&src[..len]);
 }
+
+pub unsafe fn memset(mem: *mut u8, val: u8, size: usize){
+    for i in 0..size{
+        *((mem as usize +i) as *mut u8) = val;
+    }
+}
