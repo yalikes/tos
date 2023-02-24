@@ -1,9 +1,8 @@
 use core::mem::size_of;
 
-use crate::mem_utils::memset;
 use crate::println;
 use crate::riscv::{PGSIZE, PGSHIFT};
-use crate::virtio::virtio_blk::{DISK_PAGES_LEN, DiskPages, VirtqDesc, QUEUE_NUM, VirtqAvail, VirtqUsed};
+use crate::virtio::virtio_blk::{ DiskPages, VirtqDesc, QUEUE_NUM, VirtqAvail, VirtqUsed};
 use virtio_blk::DISK;
 
 pub mod virtio_blk;

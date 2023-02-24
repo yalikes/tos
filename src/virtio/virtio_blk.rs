@@ -190,14 +190,14 @@ pub struct DiskBuffer {
 }
 
 pub fn virtio_disk_intr() {
-    let disk = DISK.lock();
+    let _disk = DISK.lock();
     // the device won't raise another interrupt until we tell it
     // we've seen this interrupt, which the following line does.
     // this may race with the device writing new entries to
     // the "used" ring, in which case we may process the new
     // completion entries in this interrupt, and have nothing to do
     // in the next interrupt, which is harmless.
-    let dev_reg_ref = unsafe { &mut *(VIRTIO0 as u64 as *mut MMIODeviceLagacyRegisterLayout) };
+    let _dev_reg_ref = unsafe { &mut *(VIRTIO0 as u64 as *mut MMIODeviceLagacyRegisterLayout) };
     //not implememnt
 }
 

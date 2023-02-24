@@ -47,18 +47,13 @@ pub extern "C" fn main() -> ! {
     unsafe {
         ALLOCATOR.lock().init(heap_start, heap_size);
     }
-    println!("{}", virtio::check_virtio_device_is_valid(memolayout::VIRTIO0 as *const u8));
     virtio::init_virtio_device(memolayout::VIRTIO0 as *const u8);
     vm::kvminit();
     vm::kvminithart();
     proc::procinit();
     trap::trapinithart();
     plicinit();
-    virtio::virtio_blk::virtio_disk_rw([0xff; 1024], true);
     proc::userinit();
-    println!("userinit finish");
-    loop {
-    }
     proc::scheduler();
 }
 
