@@ -4,19 +4,19 @@
 #![feature(const_maybe_uninit_zeroed)]
 #![allow(dead_code, non_upper_case_globals)]
 
+mod mem_utils;
 mod memolayout;
+mod params;
+mod plic;
+mod proc;
 mod riscv;
 mod start;
-mod uart;
-mod vm;
-mod utils;
-mod proc;
-mod params;
-mod trap;
-mod mem_utils;
 mod syscall;
+mod trap;
+mod uart;
+mod utils;
 mod virtio;
-mod plic;
+mod vm;
 
 use core::{arch::global_asm, panic::PanicInfo};
 use linked_list_allocator::LockedHeap;
@@ -48,6 +48,7 @@ pub extern "C" fn main() -> ! {
         ALLOCATOR.lock().init(heap_start, heap_size);
     }
     virtio::init_virtio_device(memolayout::VIRTIO0 as *const u8);
+    uart::console_init();
     vm::kvminit();
     vm::kvminithart();
     proc::procinit();
@@ -59,7 +60,7 @@ pub extern "C" fn main() -> ! {
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    println!("{}", _info);
+    // println!("{}", _info);
     loop {}
 }
 

@@ -1,6 +1,6 @@
 use core::mem::size_of;
 
-use crate::println;
+// use crate::println;
 use crate::riscv::{PGSIZE, PGSHIFT};
 use crate::virtio::virtio_blk::{ DiskPages, VirtqDesc, QUEUE_NUM, VirtqAvail, VirtqUsed};
 use virtio_blk::DISK;
@@ -119,6 +119,6 @@ pub fn init_virtio_device(dev_addr: *const u8) {
 
     //unlike xv6, we do not need memset DISK.pages because we already do this in lazy_static,
     // the same for DISK.free
-    println!("finish init blk dev");
+    // println!("finish init blk dev");
 
 }

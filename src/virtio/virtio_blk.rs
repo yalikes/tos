@@ -2,7 +2,7 @@ use core::mem::size_of;
 
 use super::MMIODeviceLagacyRegisterLayout;
 use crate::memolayout::{VIRTIO0, self};
-use crate::println;
+// use crate::println;
 use crate::riscv::PGSIZE;
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -61,64 +61,64 @@ pub const VIRTIO_F_ANY_LAYOUT: u32 = 1 << 27;
 pub const VIRTIO_UNUSED: u32 = 1 << 30;
 pub fn list_feature(feature_bits: u32) {
     if feature_bits & VIRTIO_BLK_F_BARRIER != 0 {
-        println!("VIRTIO_BLK_F_BARRIER");
+//        println!("VIRTIO_BLK_F_BARRIER");
     }
     if feature_bits & VIRTIO_BLK_F_BLK_SIZE != 0 {
-        println!("VIRTIO_BLK_F_BLK_SIZE");
+//        println!("VIRTIO_BLK_F_BLK_SIZE");
     }
     if feature_bits & VIRTIO_BLK_F_CONFIG_WCE != 0 {
-        println!("VIRTIO_BLK_F_CONFIG_WCE");
+//        println!("VIRTIO_BLK_F_CONFIG_WCE");
     }
     if feature_bits & VIRTIO_BLK_F_DISCARD != 0 {
-        println!("VIRTIO_BLK_F_DISCARD");
+//        println!("VIRTIO_BLK_F_DISCARD");
     }
     if feature_bits & VIRTIO_BLK_F_FLUSH != 0 {
-        println!("VIRTIO_BLK_F_FLUSH");
+//        println!("VIRTIO_BLK_F_FLUSH");
     }
     if feature_bits & VIRTIO_BLK_F_GEOMETRY != 0 {
-        println!("VIRTIO_BLK_F_GEOMETRY");
+//        println!("VIRTIO_BLK_F_GEOMETRY");
     }
     if feature_bits & VIRTIO_BLK_F_LIFETIME != 0 {
-        println!("VIRTIO_BLK_F_LIFETIME");
+//        println!("VIRTIO_BLK_F_LIFETIME");
     }
     if feature_bits & VIRTIO_BLK_F_MQ != 0 {
-        println!("VIRTIO_BLK_F_MQ");
+//        println!("VIRTIO_BLK_F_MQ");
     }
     if feature_bits & VIRTIO_BLK_F_RO != 0 {
-        println!("VIRTIO_BLK_F_RO");
+//        println!("VIRTIO_BLK_F_RO");
     }
     if feature_bits & VIRTIO_BLK_F_SCSI != 0 {
-        println!("VIRTIO_BLK_F_SCSI");
+//        println!("VIRTIO_BLK_F_SCSI");
     }
     if feature_bits & VIRTIO_BLK_F_SECURE_ERASE != 0 {
-        println!("VIRTIO_BLK_F_SECURE_ERASE");
+//        println!("VIRTIO_BLK_F_SECURE_ERASE");
     }
     if feature_bits & VIRTIO_BLK_F_SEG_MAX != 0 {
-        println!("VIRTIO_BLK_F_SEG_MAX");
+//        println!("VIRTIO_BLK_F_SEG_MAX");
     }
     if feature_bits & VIRTIO_BLK_F_SIZE_MAX != 0 {
-        println!("VIRTIO_BLK_F_SIZE_MAX");
+//        println!("VIRTIO_BLK_F_SIZE_MAX");
     }
     if feature_bits & VIRTIO_BLK_F_TOPOLOGY != 0 {
-        println!("VIRTIO_BLK_F_TOPOLOGY");
+//        println!("VIRTIO_BLK_F_TOPOLOGY");
     }
     if feature_bits & VIRTIO_BLK_F_WRITE_ZEROES != 0 {
-        println!("VIRTIO_BLK_F_WRITE_ZEROES");
+//        println!("VIRTIO_BLK_F_WRITE_ZEROES");
     }
     if feature_bits & VIRTIO_F_ANY_LAYOUT != 0 {
-        println!("VIRTIO_F_ANY_LAYOUT");
+//        println!("VIRTIO_F_ANY_LAYOUT");
     }
     if feature_bits & VIRTIO_F_NOTIFY_ON_EMPTY != 0 {
-        println!("VIRTIO_F_NOTIFY_ON_EMPTY");
+//        println!("VIRTIO_F_NOTIFY_ON_EMPTY");
     }
     if feature_bits & VIRTIO_F_EVENT_IDX != 0 {
-        println!("VIRTIO_F_EVENT_IDX");
+//        println!("VIRTIO_F_EVENT_IDX");
     }
     if feature_bits & VIRTIO_F_INDIRECT_DESC != 0 {
-        println!("VIRTIO_F_INDIRECT_DESC");
+//        println!("VIRTIO_F_INDIRECT_DESC");
     }
     if feature_bits & VIRTIO_UNUSED != 0 {
-        println!("VIRTIO_UNUSED");
+//        println!("VIRTIO_UNUSED");
     }
 }
 

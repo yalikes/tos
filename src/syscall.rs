@@ -1,4 +1,4 @@
-use crate::{proc::{procid, proc}, print};
+use crate::{proc::{procid, proc}};
 pub fn syscall(){
     let proc_index = procid().unwrap();
     unsafe{
@@ -6,7 +6,7 @@ pub fn syscall(){
         let trapfram = &mut (*proc_guard.trapframe);
         let num = trapfram.a7;
         if num == 114{
-            print!("a");
+            // print!("a");
         }
     }
 }

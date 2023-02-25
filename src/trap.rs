@@ -11,7 +11,7 @@ use crate::riscv::{
     SSTATUS_SPIE, SSTATUS_SPP,
 };
 use crate::syscall::syscall;
-use crate::{MAKE_SATP, println};
+use crate::{MAKE_SATP};
 
 // set up to take exceptions and traps while in the kernel.
 pub fn trapinithart() {
@@ -109,7 +109,7 @@ fn devintr() -> DevintrState {
         if irq == VIRTIO0_IRQ as u32{
             virtio_disk_intr();
         }else{
-            println!("unexpected interrupt irq={irq}");
+            // println!("unexpected interrupt irq={irq}");
         }
         // the PLIC allows each device to raise at most one
         // interrupt at a time; tell the PLIC the device is

@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::{main, println};
+use crate::{main};
 use crate::riscv::*;
 use crate::memolayout::{clint_mtimecmp, CLINT_MTIME};
 
@@ -14,7 +14,7 @@ extern "C" {
 #[no_mangle]
 extern "C" fn start() {
     // set M Previous Privilege mode to Supervisor, for mret.
-    println!("starting");
+    // println!("starting");
     let mut x: u64 = r_mstatus();
     x &= !MSTATUS_MPP_MASK;
     x |= MSTATUS_MPP_S;
@@ -63,6 +63,6 @@ fn timerinit(){
 
     //enable machine-mode timer interrupts
     w_mie(r_mie() | MIE_MTIE);
-    println!("{}: itimer inited", id);
+    // println!("{}: itimer inited", id);
 }
 
