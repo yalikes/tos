@@ -1,13 +1,14 @@
 use core::panic;
 
 use crate::memolayout::{
-    get_kernelvec, get_trampoline, get_userret, get_uservec, TRAMPOLINE, TRAPFRAME, VIRTIO0_IRQ, UART_IRQ,
+    get_kernelvec, get_trampoline, get_userret, get_uservec, TRAMPOLINE, TRAPFRAME, UART_IRQ,
+    VIRTIO0_IRQ,
 };
 use crate::plic::{plic_claim, plic_complete};
-use crate::proc::{proc, procid, Trapframe};
+use crate::proc::{proc, procid, Trapframe, myproc};
 use crate::riscv::{
-    r_satp, r_scause, r_sepc, r_sstatus, r_stval, r_tp, w_sepc, w_sstatus, w_stvec, PGSIZE,
-    SATP_SV39, SSTATUS_SPIE, SSTATUS_SPP,
+    intr_get, intr_off, intr_on, r_satp, r_scause, r_sepc, r_sstatus, r_stval, r_tp, w_sepc,
+    w_sstatus, w_stvec, PGSIZE, SATP_SV39, SSTATUS_SPIE, SSTATUS_SPP,
 };
 use crate::syscall::syscall;
 use crate::uart::uart_intr;
@@ -26,7 +27,8 @@ pub fn usertrapret() {
     // intr_off();
     //
     let proc_index = procid().unwrap();
-    let mut p = unsafe { proc[proc_index].write() };
+    let mut p = unsafe { &mut proc[proc_index] };
+    intr_off();
     w_stvec((TRAMPOLINE + (get_uservec() - get_trampoline())) as u64);
     //not implement
     unsafe {
@@ -66,12 +68,12 @@ pub fn usertrap() {
     // since we're now in the kernel.
     w_stvec(get_kernelvec() as u64);
     let proc_index = procid().unwrap();
-    let mut proc_guard = unsafe { proc[proc_index].write() };
-    let trapfram: &mut Trapframe = unsafe { &mut (*proc_guard.trapframe) };
+    let mut p = unsafe { &mut proc[proc_index] };
+    let trapfram: &mut Trapframe = unsafe { &mut (*p.trapframe) };
     trapfram.epc = r_sepc();
     if r_scause() == 8 {
         //syscall
-        proc_killed = proc_guard.killed;
+        proc_killed = p.killed;
         if proc_killed {
             //process killed
             loop {}
@@ -82,20 +84,17 @@ pub fn usertrap() {
 
         // an interrupt will change sstatus &c registers,
         // so don't enable until done with those registers.
-        drop(proc_guard);
+        drop(p);
+        intr_on();
         syscall();
     } else {
         intr_type = devintr();
         match intr_type {
             DevintrState::NotRecognized => {
-                println!(
-                    "usertrap(): unexpected scause {} pid={}",
-                    r_scause(),
-                    proc_guard.pid
-                );
+                println!("usertrap(): unexpected scause {} pid={}", r_scause(), p.pid);
                 println!("            sepc={} stval={}", r_sepc(), r_stval());
-                proc_guard.killed = true;
-                proc_killed = proc_guard.killed;
+                p.killed = true;
+                proc_killed = p.killed;
             }
             _ => {}
         }
@@ -111,7 +110,29 @@ pub fn usertrap() {
 
 #[no_mangle]
 pub fn kerneltrap() {
-    println!("coming from kerneltrap");
+    let intr_type;
+    let sepc = r_sepc();
+    let sstatus = r_sstatus();
+    let scause = r_scause();
+
+    if sstatus & SSTATUS_SPP == 0 {
+        panic!("kerneltrap: not from supervisor mode");
+    }
+    if intr_get() {
+        panic!("kerneltrap: interrupts ");
+    }
+    intr_type = devintr();
+    if matches!(intr_type, DevintrState::NotRecognized) {
+        println!("scause {}", scause);
+        println!("sepc={} stval={}", r_sepc(), r_stval());
+        panic!("kerneltrap");
+    }
+    if matches!(intr_type, DevintrState::TimerIntr) {
+        // need yield cpu here
+    }
+
+    w_sepc(sepc);
+    w_sstatus(sstatus);
 }
 
 enum DevintrState {
@@ -131,7 +152,7 @@ fn devintr() -> DevintrState {
         let irq = plic_claim();
         if irq == VIRTIO0_IRQ as u32 {
             virtio_disk_intr();
-        } else if irq == UART_IRQ as u32{
+        } else if irq == UART_IRQ as u32 {
             uart_intr();
             // println!("unexpected interrupt irq={irq}");
         }

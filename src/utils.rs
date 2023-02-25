@@ -6,3 +6,7 @@ pub fn print_addr(addr: u64, size: usize){
         // print!("{:02x} ", unsafe { *((addr + i as u64) as *const u8)});
     }
 }
+
+pub fn get_ref_addr<T>(v: &T) -> u64{
+    v as *const T as u64
+}

@@ -16,6 +16,7 @@ mod trap;
 mod uart;
 mod utils;
 mod virtio;
+mod spin_lock;
 mod vm;
 
 use core::{arch::global_asm, panic::PanicInfo};
@@ -57,7 +58,7 @@ pub extern "C" fn main() -> ! {
     proc::procinit();
     trap::trapinithart();
     proc::userinit();
-    proc::scheduler();
+    proc::scheduler();// need to implement a spin lock that didn't drop when go out of a scope
 }
 
 #[panic_handler]

@@ -5,20 +5,22 @@ use crate::mem_utils::slice_cpy;
 use crate::memolayout::{get_trampoline, TRAMPOLINE, TRAPFRAME};
 use crate::params::{NCPU, NPROC};
 use crate::riscv::{r_tp, PGSIZE, PTE_R, PTE_W, PTE_X};
-use crate::vm::{kalloc, mappages, uvmcreate, uvminit, PageTable};
 use crate::trap::usertrapret;
+use crate::utils::get_ref_addr;
+use crate::vm::{kalloc, mappages, uvmcreate, uvminit, PageTable};
 
 // Saved registers for kernel context switches.
 
 pub static mut next_pid: Mutex<i32> = Mutex::new(1);
 
-pub static mut proc: [RwLock<Proc>; NPROC] = unsafe { MaybeUninit::zeroed().assume_init() }; // because this is convient
-pub static mut cpus: [RwLock<Cpu>; NCPU] = unsafe { MaybeUninit::zeroed().assume_init() };
-
+pub static proc_locks: [crate::spin_lock::SpinLock; NPROC] =
+    unsafe { MaybeUninit::zeroed().assume_init() };
+pub static mut proc: [Proc; NPROC] = unsafe { MaybeUninit::zeroed().assume_init() }; // because this is convient
+pub static mut cpus: [Cpu; NCPU] = unsafe { MaybeUninit::zeroed().assume_init() };
 
 /// riscv64-linux-gnu-gcc -c initcode.S  -o initcode.o
 /// riscv64-linux-gnu-objcopy -S -O binary initcode.o initcode
-/// od -t xC initcode 
+/// od -t xC initcode
 /// copy content of initcode into here
 // with loop
 // pub static initcode: [u8; 64] = [
@@ -36,10 +38,10 @@ pub static mut cpus: [RwLock<Cpu>; NCPU] = unsafe { MaybeUninit::zeroed().assume
 //0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 //];
 pub static initcode: [u8; 60] = [
-0x17, 0x05, 0x00, 0x00, 0x03, 0x35, 0x05, 0x00, 0x97, 0x05, 0x00, 0x00, 0x83, 0xb5, 0x05, 0x00,
-0x93, 0x08, 0x20, 0x07, 0x09, 0xa0, 0x73, 0x00, 0x00, 0x00, 0xf5, 0xbf, 0x93, 0x08, 0xa0, 0x02,
-0x73, 0x00, 0x00, 0x00, 0xef, 0xf0, 0x9f, 0xff, 0x2f, 0x69, 0x6e, 0x69, 0x74, 0x00, 0x00, 0x01,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x17, 0x05, 0x00, 0x00, 0x03, 0x35, 0x05, 0x00, 0x97, 0x05, 0x00, 0x00, 0x83, 0xb5, 0x05, 0x00,
+    0x93, 0x08, 0x20, 0x07, 0x09, 0xa0, 0x73, 0x00, 0x00, 0x00, 0xf5, 0xbf, 0x93, 0x08, 0xa0, 0x02,
+    0x73, 0x00, 0x00, 0x00, 0xef, 0xf0, 0x9f, 0xff, 0x2f, 0x69, 0x6e, 0x69, 0x74, 0x00, 0x00, 0x01,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
@@ -162,8 +164,8 @@ pub struct Proc {
 pub fn procinit() {
     for i in 0..NPROC {
         unsafe {
-            proc[i] = RwLock::new(MaybeUninit::zeroed().assume_init());
-            proc[i].get_mut().kstack = crate::KSTACK!(i) as u64;
+            proc[i] = MaybeUninit::zeroed().assume_init();
+            proc[i].kstack = crate::KSTACK!(i) as u64;
         }
     }
 }
@@ -171,7 +173,7 @@ pub fn procinit() {
 pub fn allocproc() -> Option<usize> {
     for i in 0..NPROC {
         unsafe {
-            let p = proc[i].get_mut();
+            let p = &mut proc[i];
             match p.state {
                 ProcessState::UNUSED => {
                     p.pid = get_next_pid();
@@ -235,16 +237,23 @@ fn get_next_pid() -> i32 {
 }
 
 pub fn forkret() {
+    //we need release clock on curreent proc
+    let proc_index = myproc().expect("forkret should have proc_index");
+    proc_locks[proc_index].unlock();
     //file system operation not implement
+
     usertrapret();
 }
 
-
+pub fn myproc() -> Option<usize> {
+    let cpu_index = cpuid();
+    unsafe { cpus[cpu_index].proc_index }
+}
 
 pub fn userinit() {
     let proc_index = allocproc().expect("fiiled to alloc proc");
     unsafe {
-        let p = proc[proc_index].get_mut();
+        let p = &mut proc[proc_index];
         uvminit(&mut *p.pagetable, &initcode);
         p.sz = PGSIZE as u64;
         (*p.trapframe).epc = 0;
@@ -262,7 +271,7 @@ pub fn cpuid() -> usize {
 pub fn procid() -> Option<usize> {
     //push_off
     let cpuid = cpuid();
-    let procid = unsafe { cpus[cpuid].read().proc_index };
+    let procid = unsafe { cpus[cpuid].proc_index };
 
     //pop_off
     procid
@@ -271,22 +280,25 @@ pub fn procid() -> Option<usize> {
 pub fn scheduler() -> ! {
     let cpuid = cpuid();
     unsafe {
-        let cpu = cpus[cpuid].get_mut();
+        let cpu = &mut cpus[cpuid];
         cpu.proc_index = None;
         loop {
             for i in 0..NPROC {
-                let p = proc[i].get_mut();
+                proc_locks[i].lock();
+                let p = &mut proc[i];
                 match p.state {
                     ProcessState::RUNNABLE => {
                         p.state = ProcessState::RUNNING;
                         cpu.proc_index = Some(i);
-                        swtch(
-                            &mut cpu.context as *mut Context,
-                            &mut p.context as *mut Context,
-                        );
+                        let ccurrent_contex_addr_val = get_ref_addr(&cpu.context);
+                        let ccurrent_contex_addr = ccurrent_contex_addr_val as *mut Context;
+                        let next_contex_addr = &mut p.context as *mut Context;
+                        swtch(ccurrent_contex_addr, next_contex_addr);
+                        cpu.proc_index = None
                     }
                     _ => {}
                 }
+                proc_locks[i].unlock();
             }
         }
     }
