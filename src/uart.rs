@@ -1,4 +1,7 @@
-// use core::fmt;
+use core::fmt;
+use spin::Mutex;
+
+use crate::memolayout::UART;
 // use lazy_static::lazy_static;
 // use uart_16550::MmioSerialPort;
 // use spin::Mutex;
@@ -10,26 +13,22 @@
 //     });
 // }
 
-// #[macro_export]
-// macro_rules! print {
-//     ($($arg:tt)*) => ($crate::uart::_print(format_args!($($arg)*)));
-// }
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::uart::_print(format_args!($($arg)*)));
+}
 
-// #[macro_export]
-// macro_rules! println {
-//     () => ($crate::print!("\n"));
-//     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
-// }
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
 
-use spin::Mutex;
-
-use crate::memolayout::UART;
-
-// #[doc(hidden)]
-// pub fn _print(args: fmt::Arguments){
-//     use core::fmt::Write;
-//     TERMINAL_WRITER.lock().write_fmt(args).unwrap();
-// }
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    use core::fmt::Write;
+    get_uart_ref().write_fmt(args).unwrap();
+}
 
 const IER_RX_ENABLE: u8 = 1 << 0;
 const IER_TX_ENABLE: u8 = 1 << 1;
@@ -74,8 +73,48 @@ fn uart_init() {
     uart_ref.ier = IER_TX_ENABLE | IER_RX_ENABLE; //enable transmit and receive interrupts
 }
 
+impl UartMimo {
+    fn _write_char(&mut self, c: u8) {
+        while self.lsr & LSR_TX_IDLE == 0 {}
+        self.rhr_thr = c;
+    }
+}
+
 pub fn uartputc_sync(c: u8) {
     let uart_ref = get_uart_ref();
     while uart_ref.lsr & LSR_TX_IDLE == 0 {}
     uart_ref.rhr_thr = c;
+}
+
+impl fmt::Write for UartMimo {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for c in s.bytes() {
+            self._write_char(c);
+        }
+        Ok(())
+    }
+}
+
+pub fn uart_intr() {
+    loop {
+        let c_opt = uart_getc();
+        match c_opt {
+            None => break,
+            Some(c) => console_intr(c),
+        }
+    }
+}
+
+pub fn uart_getc() -> Option<u8> {
+    let uart_ref = get_uart_ref();
+    if uart_ref.lsr & 0x01 != 0 {
+        // input data is ready
+        Some(uart_ref.rhr_thr)
+    } else {
+        None
+    }
+}
+
+fn console_intr(c: u8) {
+    uartputc_sync(c);
 }

@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::{main};
+use crate::{main, println};
 use crate::riscv::*;
 use crate::memolayout::{clint_mtimecmp, CLINT_MTIME};
 
@@ -14,7 +14,7 @@ extern "C" {
 #[no_mangle]
 extern "C" fn start() {
     // set M Previous Privilege mode to Supervisor, for mret.
-    // println!("starting");
+    println!("starting");// uart didn't get init, but it works.
     let mut x: u64 = r_mstatus();
     x &= !MSTATUS_MPP_MASK;
     x |= MSTATUS_MPP_S;

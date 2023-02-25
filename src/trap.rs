@@ -1,17 +1,18 @@
 use core::panic;
 
 use crate::memolayout::{
-    get_kernelvec, get_trampoline, get_userret, get_uservec, TRAMPOLINE, TRAPFRAME, VIRTIO0_IRQ,
+    get_kernelvec, get_trampoline, get_userret, get_uservec, TRAMPOLINE, TRAPFRAME, VIRTIO0_IRQ, UART_IRQ,
 };
 use crate::plic::{plic_claim, plic_complete};
 use crate::proc::{proc, procid, Trapframe};
-use crate::virtio::virtio_blk::virtio_disk_intr;
 use crate::riscv::{
-    r_satp, r_scause, r_sepc, r_sstatus, r_tp, w_sepc, w_sstatus, w_stvec, PGSIZE, SATP_SV39,
-    SSTATUS_SPIE, SSTATUS_SPP,
+    r_satp, r_scause, r_sepc, r_sstatus, r_stval, r_tp, w_sepc, w_sstatus, w_stvec, PGSIZE,
+    SATP_SV39, SSTATUS_SPIE, SSTATUS_SPP,
 };
 use crate::syscall::syscall;
-use crate::{MAKE_SATP};
+use crate::uart::uart_intr;
+use crate::virtio::virtio_blk::virtio_disk_intr;
+use crate::{println, MAKE_SATP};
 
 // set up to take exceptions and traps while in the kernel.
 pub fn trapinithart() {
@@ -54,6 +55,8 @@ pub fn usertrapret() {
 }
 
 pub fn usertrap() {
+    let mut intr_type = DevintrState::NotRecognized;
+    let mut proc_killed = false;
     // when a exception occurs, before we disable exception, another excpetion occurs
     // does this program can handle this?
     if (r_sstatus() & SSTATUS_SPP) != 0 {
@@ -63,32 +66,52 @@ pub fn usertrap() {
     // since we're now in the kernel.
     w_stvec(get_kernelvec() as u64);
     let proc_index = procid().unwrap();
-    unsafe {
-        let mut proc_guard = proc[proc_index].write();
-        let trapfram: &mut Trapframe = &mut (*proc_guard.trapframe);
-        trapfram.epc = r_sepc();
-        if r_scause() == 8 {
-            //syscall
-            if proc_guard.killed {
-                //process killed
-                loop {}
-            }
-            // sepc points to the ecall instruction,
-            // but we want to return to the next instruction.
-            trapfram.epc += 4;
-
-            // an interrupt will change sstatus &c registers,
-            // so don't enable until done with those registers.
-            drop(proc_guard);
-            syscall();
+    let mut proc_guard = unsafe { proc[proc_index].write() };
+    let trapfram: &mut Trapframe = unsafe { &mut (*proc_guard.trapframe) };
+    trapfram.epc = r_sepc();
+    if r_scause() == 8 {
+        //syscall
+        proc_killed = proc_guard.killed;
+        if proc_killed {
+            //process killed
+            loop {}
         }
+        // sepc points to the ecall instruction,
+        // but we want to return to the next instruction.
+        trapfram.epc += 4;
+
+        // an interrupt will change sstatus &c registers,
+        // so don't enable until done with those registers.
+        drop(proc_guard);
+        syscall();
+    } else {
+        intr_type = devintr();
+        match intr_type {
+            DevintrState::NotRecognized => {
+                println!(
+                    "usertrap(): unexpected scause {} pid={}",
+                    r_scause(),
+                    proc_guard.pid
+                );
+                println!("            sepc={} stval={}", r_sepc(), r_stval());
+                proc_guard.killed = true;
+                proc_killed = proc_guard.killed;
+            }
+            _ => {}
+        }
+    }
+    if proc_killed {
+        //not implement
+    }
+    if matches!(intr_type, DevintrState::TimerIntr) {
+        // yield, but not implememnt
     }
     usertrapret();
 }
 
 #[no_mangle]
-pub fn kerneltrap(){
-    
+pub fn kerneltrap() {
+    println!("coming from kerneltrap");
 }
 
 enum DevintrState {
@@ -106,18 +129,19 @@ fn devintr() -> DevintrState {
 
         // irq indicates which device interrupted.
         let irq = plic_claim();
-        if irq == VIRTIO0_IRQ as u32{
+        if irq == VIRTIO0_IRQ as u32 {
             virtio_disk_intr();
-        }else{
+        } else if irq == UART_IRQ as u32{
+            uart_intr();
             // println!("unexpected interrupt irq={irq}");
         }
         // the PLIC allows each device to raise at most one
         // interrupt at a time; tell the PLIC the device is
         // now allowed to interrupt again.
-        if irq != 0{
+        if irq != 0 {
             plic_complete(irq);
         }
-        return DevintrState::OtherDev
+        return DevintrState::OtherDev;
     }
-    return DevintrState::NotRecognized
+    return DevintrState::NotRecognized;
 }

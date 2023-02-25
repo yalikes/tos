@@ -1,4 +1,4 @@
-use crate::{proc::{procid, proc}};
+use crate::{proc::{procid, proc}, uart::uartputc_sync};
 pub fn syscall(){
     let proc_index = procid().unwrap();
     unsafe{
@@ -6,6 +6,7 @@ pub fn syscall(){
         let trapfram = &mut (*proc_guard.trapframe);
         let num = trapfram.a7;
         if num == 114{
+            uartputc_sync(65);
             // print!("a");
         }
     }

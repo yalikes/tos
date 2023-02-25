@@ -20,6 +20,7 @@ mod vm;
 
 use core::{arch::global_asm, panic::PanicInfo};
 use linked_list_allocator::LockedHeap;
+use plic::plicinithart;
 
 use crate::plic::plicinit;
 
@@ -49,11 +50,12 @@ pub extern "C" fn main() -> ! {
     }
     virtio::init_virtio_device(memolayout::VIRTIO0 as *const u8);
     uart::console_init();
+    plicinit();
+    plicinithart();
     vm::kvminit();
     vm::kvminithart();
     proc::procinit();
     trap::trapinithart();
-    plicinit();
     proc::userinit();
     proc::scheduler();
 }
