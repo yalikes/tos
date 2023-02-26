@@ -56,7 +56,7 @@ pub fn console_init() {
     uart_init();
 }
 
-fn get_uart_ref() -> &'static mut UartMimo {
+fn get_uart_ref<'a>() -> &'a mut UartMimo {
     let mut uart_ptr = unsafe { SERIAL_PORT.lock() };
     unsafe { &mut **uart_ptr }
 }
