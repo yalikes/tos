@@ -58,7 +58,7 @@ pub extern "C" fn main() -> ! {
     proc::procinit();
     trap::trapinithart();
     proc::userinit();
-    proc::scheduler();// need to implement a spin lock that didn't drop when go out of a scope
+    proc::scheduler();
 }
 
 #[panic_handler]

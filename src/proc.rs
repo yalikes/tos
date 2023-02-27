@@ -1,5 +1,5 @@
 use core::mem::MaybeUninit;
-use spin::{Mutex, RwLock};
+use spin::Mutex;
 
 use crate::mem_utils::slice_cpy;
 use crate::memolayout::{get_trampoline, TRAMPOLINE, TRAPFRAME};

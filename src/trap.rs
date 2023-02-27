@@ -5,7 +5,7 @@ use crate::memolayout::{
     VIRTIO0_IRQ,
 };
 use crate::plic::{plic_claim, plic_complete};
-use crate::proc::{proc, procid, Trapframe, myproc};
+use crate::proc::{proc, procid, Trapframe};
 use crate::riscv::{
     intr_get, intr_off, intr_on, r_satp, r_scause, r_sepc, r_sstatus, r_stval, r_tp, w_sepc,
     w_sstatus, w_stvec, PGSIZE, SATP_SV39, SSTATUS_SPIE, SSTATUS_SPP,
@@ -27,7 +27,7 @@ pub fn usertrapret() {
     // intr_off();
     //
     let proc_index = procid().unwrap();
-    let mut p = unsafe { &mut proc[proc_index] };
+    let p = unsafe { &mut proc[proc_index] };
     intr_off();
     w_stvec((TRAMPOLINE + (get_uservec() - get_trampoline())) as u64);
     //not implement
