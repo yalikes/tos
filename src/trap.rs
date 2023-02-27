@@ -1,19 +1,24 @@
 use core::panic;
 
+use spin::Mutex;
+
 use crate::memolayout::{
     get_kernelvec, get_trampoline, get_userret, get_uservec, TRAMPOLINE, TRAPFRAME, UART_IRQ,
     VIRTIO0_IRQ,
 };
 use crate::plic::{plic_claim, plic_complete};
-use crate::proc::{proc, procid, Trapframe};
+use crate::proc::{proc, procid, Trapframe, cpuid};
 use crate::riscv::{
     intr_get, intr_off, intr_on, r_satp, r_scause, r_sepc, r_sstatus, r_stval, r_tp, w_sepc,
-    w_sstatus, w_stvec, PGSIZE, SATP_SV39, SSTATUS_SPIE, SSTATUS_SPP,
+    w_sstatus, w_stvec, PGSIZE, SATP_SV39, SSTATUS_SPIE, SSTATUS_SPP, w_sip, r_sip,
 };
 use crate::syscall::syscall;
 use crate::uart::uart_intr;
 use crate::virtio::virtio_blk::virtio_disk_intr;
 use crate::{println, MAKE_SATP};
+
+
+static TICKS: Mutex<usize> = Mutex::new(0);
 
 // set up to take exceptions and traps while in the kernel.
 pub fn trapinithart() {
@@ -163,6 +168,21 @@ fn devintr() -> DevintrState {
             plic_complete(irq);
         }
         return DevintrState::OtherDev;
+    } else if scause == 0x8000000000000001 {
+        // software interrupt from a machine-mode timer interrupt,
+        // forwarded by timervec in kernelvec.S.
+        if cpuid() == 0{
+            clockintr();
+        }
+        w_sip(r_sip() & !2);
+        return DevintrState::TimerIntr;
     }
     return DevintrState::NotRecognized;
+}
+
+fn clockintr()
+{
+  let mut ticks_guard = TICKS.lock();
+  (*ticks_guard)+=1;
+  //wakeup(&ticks);
 }
