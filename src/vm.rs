@@ -66,9 +66,9 @@ fn kvmmap(pgtbl: &mut PageTable, va: usize, pa: usize, sz: usize, perm: u64) {
 
 fn proc_mapstack(pgtbl: &mut PageTable) {
     for i in 0..NPROC {
-        let pa = kalloc();
+        let pa = kalloc_n_pages(15);
         let va = crate::KSTACK!(i);
-        kvmmap(pgtbl, va, pa as usize, PGSIZE, PTE_R | PTE_W);
+        kvmmap(pgtbl, va , pa as usize, PGSIZE * 15, PTE_R | PTE_W);
     }
 }
 
@@ -129,6 +129,16 @@ pub fn kalloc() -> *mut u8 {
             .lock()
             .allocate_first_fit(Layout::from_size_align_unchecked(PGSIZE, PGSIZE))
             .expect("kalloc error")
+            .as_ptr()
+    }
+}
+
+pub fn kalloc_n_pages(n: usize) -> *mut u8{
+    unsafe{
+        ALLOCATOR
+            .lock()
+            .allocate_first_fit(Layout::from_size_align_unchecked(PGSIZE * n, PGSIZE))
+            .expect("kalloc_n_pages error")
             .as_ptr()
     }
 }

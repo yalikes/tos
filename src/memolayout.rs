@@ -64,7 +64,7 @@ pub fn clint_mtimecmp(hartid: u64) -> u64 {
 #[macro_export]
 macro_rules! KSTACK {
     ($p: expr) => {
-        TRAMPOLINE - ($p + 1) * 2 * PGSIZE
+        TRAMPOLINE - ($p + 1) * 16 * PGSIZE
     };
 }
 

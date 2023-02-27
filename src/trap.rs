@@ -34,7 +34,7 @@ pub fn usertrapret() {
     unsafe {
         let trapframe = &mut (*p.trapframe);
         trapframe.kernel_satp = r_satp(); // kernel page table
-        trapframe.kernel_sp = p.kstack + PGSIZE as u64; // process's kernel stack
+        trapframe.kernel_sp = p.kstack + (PGSIZE as u64) * 15 as u64; // process's kernel stack
         trapframe.kernel_trap = usertrap as u64;
         trapframe.kernel_hartid = r_tp(); // hartid for cpuid()
     }
