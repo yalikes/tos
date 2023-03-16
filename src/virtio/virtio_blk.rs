@@ -2,7 +2,7 @@ use core::mem::size_of;
 
 use super::MMIODeviceLagacyRegisterLayout;
 use crate::memolayout::{VIRTIO0, self};
-// use crate::println;
+use crate::println;
 use crate::riscv::PGSIZE;
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -11,7 +11,6 @@ use super::{VIRTIO_F_EVENT_IDX, VIRTIO_F_INDIRECT_DESC};
 
 lazy_static! {
     pub static ref DISK: Mutex<Disk> = Mutex::new(Disk {
-        pages: [0; 2 * PGSIZE],
         desc: 0 as *mut VirtqDesc,
         avail: 0 as *mut VirtqAvail,
         used: 0 as *mut VirtqUsed,
@@ -124,7 +123,6 @@ pub fn list_feature(feature_bits: u32) {
 
 #[repr(C)]
 pub struct Disk {
-    pub pages: DiskPages,
     pub desc: *mut VirtqDesc,
     pub avail: *mut VirtqAvail,
     pub used: *mut VirtqUsed,
@@ -136,7 +134,6 @@ pub struct Disk {
 
 unsafe impl Send for Disk {}
 
-pub type DiskPages = [u8; DISK_PAGES_LEN];
 
 #[repr(C)]
 pub struct VirtqDesc {
@@ -191,6 +188,7 @@ pub struct DiskBuffer {
 
 pub fn virtio_disk_intr() {
     let _disk = DISK.lock();
+    println!("in virtio disk intr");
     // the device won't raise another interrupt until we tell it
     // we've seen this interrupt, which the following line does.
     // this may race with the device writing new entries to
@@ -237,6 +235,6 @@ pub fn virtio_disk_rw(data: [u8; BSIZE], write: bool) {
     avail_ref.ring[avail_ref.idx as usize % QUEUE_NUM] = 0;
     avail_ref.idx  += 1;
     let dev_reg_ref = unsafe { &mut *(memolayout::VIRTIO0 as u64 as *mut MMIODeviceLagacyRegisterLayout) };
-    dev_reg_ref.queue_notify[0] = 0;
+    // dev_reg_ref.queue_notify[0] = 0;
     loop{}
 }

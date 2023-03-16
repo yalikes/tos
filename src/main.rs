@@ -10,18 +10,20 @@ mod params;
 mod plic;
 mod proc;
 mod riscv;
+mod spin_lock;
 mod start;
 mod syscall;
 mod trap;
 mod uart;
 mod utils;
 mod virtio;
-mod spin_lock;
 mod vm;
 
 use core::{arch::global_asm, panic::PanicInfo};
 use linked_list_allocator::LockedHeap;
 use plic::plicinithart;
+use riscv::intr_on;
+use virtio::virtio_blk::virtio_disk_rw;
 
 use crate::plic::plicinit;
 
@@ -49,7 +51,7 @@ pub extern "C" fn main() -> ! {
     unsafe {
         ALLOCATOR.lock().init(heap_start, heap_size);
     }
-    virtio::init_virtio_device(memolayout::VIRTIO0 as *const u8);
+    virtio::init_virtio_blk_device(memolayout::VIRTIO0 as *const u8);
     uart::console_init();
     plicinit();
     plicinithart();
@@ -58,12 +60,14 @@ pub extern "C" fn main() -> ! {
     proc::procinit();
     trap::trapinithart();
     proc::userinit();
+    intr_on();
+    virtio_disk_rw([0x75; 1024], true);
     proc::scheduler();
 }
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    // println!("{}", _info);
+    println!("{}", _info);
     loop {}
 }
 
