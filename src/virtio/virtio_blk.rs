@@ -1,4 +1,6 @@
 use core::mem::size_of;
+use core::sync::atomic::AtomicBool;
+use core::sync::atomic::Ordering::Relaxed;
 
 use super::MMIODeviceLagacyRegisterLayout;
 use crate::memolayout::{self, VIRTIO0};
@@ -27,6 +29,7 @@ lazy_static! {
         }; QUEUE_NUM],
     });
 }
+pub static mut is_finish_rw: AtomicBool = AtomicBool::new(true);
 
 pub const BSIZE: usize = 1024;
 
@@ -186,8 +189,7 @@ pub struct DiskBuffer {
 }
 
 pub fn virtio_disk_intr() {
-    let _disk = DISK.lock();
-    println!("in virtio disk intr");
+    // let _disk = DISK.lock();
     // the device won't raise another interrupt until we tell it
     // we've seen this interrupt, which the following line does.
     // this may race with the device writing new entries to
@@ -195,7 +197,10 @@ pub fn virtio_disk_intr() {
     // completion entries in this interrupt, and have nothing to do
     // in the next interrupt, which is harmless.
     let _dev_reg_ref = unsafe { &mut *(VIRTIO0 as u64 as *mut MMIODeviceLagacyRegisterLayout) };
-    //not implememnt
+
+    unsafe {
+        is_finish_rw.store(true, Relaxed);
+    }
 }
 
 pub fn virtio_disk_rw(data: [u8; BSIZE], write: bool) {
@@ -211,6 +216,11 @@ pub fn virtio_disk_rw(data: [u8; BSIZE], write: bool) {
     } else {
         buf0.type_filed = VIRTIO_BLK_T_IN; // read the disk
     }
+
+    // the spec's Section 5.2 says that legacy block operations use
+    // three descriptors: one for type/reserved/sector, one for the
+    // data, one for a 1-byte status result.
+
     buf0.reserved = 0;
     buf0.sector = sector;
     let desc_array = unsafe { &mut *(disk_ref.desc as *mut [VirtqDesc; QUEUE_NUM]) };
@@ -238,6 +248,9 @@ pub fn virtio_disk_rw(data: [u8; BSIZE], write: bool) {
     avail_ref.idx += 1;
     let dev_reg_ref =
         unsafe { &mut *(memolayout::VIRTIO0 as u64 as *mut MMIODeviceLagacyRegisterLayout) };
-    dev_reg_ref.queue_notify = 0;
-    loop {}
+    unsafe {
+        is_finish_rw.store(false, Relaxed);
+    }
+    dev_reg_ref.queue_notify = 0; // start device r/w operation
+    unsafe { while !is_finish_rw.load(Relaxed) {} }
 }

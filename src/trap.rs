@@ -156,7 +156,6 @@ fn devintr() -> DevintrState {
         // irq indicates which device interrupted.
         let irq = plic_claim();
         if irq == VIRTIO0_IRQ as u32 {
-            println!("irq: VIRTIO_IRQ");
             virtio_disk_intr();
         } else if irq == UART_IRQ as u32 {
             uart_intr();
