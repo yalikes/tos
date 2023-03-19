@@ -4,20 +4,21 @@
 #![feature(const_maybe_uninit_zeroed)]
 #![allow(dead_code, non_upper_case_globals)]
 
+mod plic;
+mod spin_lock;
+mod trap;
 mod mem_utils;
 mod memolayout;
 mod params;
-mod plic;
+mod pci;
 mod proc;
 mod riscv;
-mod spin_lock;
 mod start;
 mod syscall;
-mod trap;
-mod uart;
-mod utils;
 mod virtio;
 mod vm;
+mod uart;
+mod utils;
 
 use core::{arch::global_asm, panic::PanicInfo};
 use linked_list_allocator::LockedHeap;
@@ -55,6 +56,10 @@ pub extern "C" fn main() -> ! {
     uart::console_init();
     plicinit();
     plicinithart();
+    pci::list_pci(memolayout::PCI_BASE + 1 * 8 * (1 << 12));
+    unsafe {
+        pci::write_vga(memolayout::PCI_BASE + 1 * 8 * (1 << 12));
+    }
     vm::kvminit();
     vm::kvminithart();
     proc::procinit();
@@ -62,6 +67,8 @@ pub extern "C" fn main() -> ! {
     proc::userinit();
     intr_on();
     virtio_disk_rw([0x75; 1024], true);
+    //pci::list_pci(memolayout::PCI_BASE+1*8*(1<<12));
+    loop {}
     proc::scheduler();
 }
 

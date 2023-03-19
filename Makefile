@@ -2,7 +2,6 @@ run:
 	cargo build
 	qemu-system-riscv64 \
 		-machine virt \
-		-nographic \
 		-m 128M \
 		-bios none \
 		-global virtio-mmio.force-legacy=false \
@@ -15,7 +14,6 @@ debug:
 	cargo build
 	qemu-system-riscv64 \
 		-machine virt \
-		-nographic \
 		-m 128M \
 		-bios none \
 		-global virtio-mmio.force-legacy=false \
