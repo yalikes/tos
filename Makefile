@@ -1,6 +1,8 @@
 run:
 	cargo build
 	qemu-system-riscv64 \
+		-monitor unix:/tmp/monitor.sock,server,wait=off \
+		-serial unix:/tmp/serial.sock,server,wait=off \
 		-machine virt \
 		-m 128M \
 		-bios none \
@@ -13,6 +15,8 @@ run:
 debug:
 	cargo build
 	qemu-system-riscv64 \
+		-monitor unix:/tmp/monitor.sock,server,wait=off \
+		-serial unix:/tmp/serial.sock,server,wait=on \
 		-machine virt \
 		-m 128M \
 		-bios none \
