@@ -19,6 +19,7 @@ mod virtio;
 mod vm;
 mod uart;
 mod utils;
+mod virtio_gpu;
 
 use core::{arch::global_asm, panic::PanicInfo};
 use linked_list_allocator::LockedHeap;
@@ -56,16 +57,16 @@ pub extern "C" fn main() -> ! {
     uart::console_init();
     plicinit();
     plicinithart();
-    pci::list_pci(memolayout::PCI_BASE + 1 * 8 * (1 << 12));
+    pci::list_pci(memolayout::PCI_BASE);
     unsafe {
         pci::write_vga(memolayout::PCI_BASE + 1 * 8 * (1 << 12));
     }
+    intr_on();
     vm::kvminit();
     vm::kvminithart();
     proc::procinit();
     trap::trapinithart();
     proc::userinit();
-    intr_on();
     virtio_disk_rw([0x75; 1024], true);
     //pci::list_pci(memolayout::PCI_BASE+1*8*(1<<12));
     loop {}
