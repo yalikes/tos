@@ -57,10 +57,11 @@ pub extern "C" fn main() -> ! {
     uart::console_init();
     plicinit();
     plicinithart();
-    pci::list_pci(memolayout::PCI_BASE);
-    unsafe {
-        pci::write_vga(memolayout::PCI_BASE + 1 * 8 * (1 << 12));
-    }
+    // pci::list_pci(memolayout::PCI_BASE);
+    // unsafe {
+    //     pci::write_vga(memolayout::PCI_BASE + 1 * 8 * (1 << 12));
+    // }
+    
     intr_on();
     vm::kvminit();
     vm::kvminithart();

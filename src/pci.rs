@@ -1,6 +1,6 @@
 use crate::{
     mem_utils,
-    memolayout::{VGA_FRAME_BUFFER, VGA_FRAME_BUFFER_SIZE, VGA_MMIO_BASE},
+    memolayout::{VGA_FRAME_BUFFER, VGA_FRAME_BUFFER_SIZE, VGA_MMIO_BASE, PCI_BASE},
     println,
     vm::kalloc,
 };
@@ -65,8 +65,10 @@ pub fn list_pci(pci_base_addr: usize) {
                 continue;
             }
             println!(
-                "bus:dev:func {0}:{dev_num}:{func_num} vendor_id:device_id {:04x}:{:04x}",
-                config_space_header.vendor_id, config_space_header.device_id
+                "bus:dev:func {bus_num}:{dev_num}:{func_num} vendor_id:device_id {:04x}:{:04x}",
+                config_space_header.vendor_id,
+                config_space_header.device_id,
+                bus_num = 0,
             );
 
             println!(
@@ -80,7 +82,10 @@ pub fn list_pci(pci_base_addr: usize) {
                     "capabilities pointer {:x}",
                     type0_header.capabilities_pointer
                 );
-                disp_cap_list(config_space_addr, type0_header.capabilities_pointer as usize);
+                disp_cap_list(
+                    config_space_addr,
+                    type0_header.capabilities_pointer as usize,
+                );
             }
             println!("----------------");
         }
@@ -89,7 +94,8 @@ pub fn list_pci(pci_base_addr: usize) {
 
 pub fn disp_cap_list(config_addr: usize, cap_pointer: usize) {
     let mut cap_ptr = cap_pointer;
-    while cap_ptr != 0 {// next cap equals 0 means end of the chain
+    while cap_ptr != 0 {
+        // next cap equals 0 means end of the chain
         let addr = config_addr + cap_ptr;
         let cap_vndr = unsafe { *(addr as *const u8) };
         cap_ptr = unsafe { *((addr + 1) as *const u8) } as usize; //next cap
@@ -99,6 +105,22 @@ pub fn disp_cap_list(config_addr: usize, cap_pointer: usize) {
         let pci_cap = unsafe { &*(addr as *const VirtioPciCap) };
         println!("{:?}", pci_cap);
     }
+}
+
+pub fn find_device(pci_base_addr: usize, vendor_id: u16, device_id: u16) -> Option<usize> {
+    for dev_num in 0..(1 << 5) {
+        for func_num in 0..(1 << 3) {
+            let config_space_addr = pci_base_addr + (dev_num << (12 + 3)) + (func_num << 12);
+            let config_space_header =
+                unsafe { &*(config_space_addr as *const PCIConfigurationSpcaeHeader) };
+            if config_space_header.vendor_id == vendor_id
+                && config_space_header.device_id == device_id
+            {
+                return Some(config_space_addr);
+            }
+        }
+    }
+    None
 }
 
 pub unsafe fn write_vga(addr: usize) {
@@ -127,4 +149,10 @@ pub unsafe fn write_vga(addr: usize) {
     let vga_mmio: &mut [u8; 4096] = &mut *(VGA_MMIO_BASE as *mut [u8; 4096]);
     framebuffer.fill(0xff);
     vga_mmio[0] = 0x0c;
+}
+
+pub fn test_write_bar(){
+    let config_addr = find_device(PCI_BASE, 0x1af4, 0x1050).expect("can't find pci device");
+    let header = unsafe{&*(config_addr as *mut PCIConfigurationSpcaeHeaderType0)};
+    // header.base_address_registers
 }
