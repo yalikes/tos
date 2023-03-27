@@ -5,6 +5,8 @@ use crate::{
     vm::kalloc,
 };
 
+pub const VENDOR_SPECIFIC: u8 = 0x09;
+
 #[derive(Debug)]
 #[repr(C)]
 struct PCIConfigurationSpcaeHeader {
@@ -37,6 +39,20 @@ pub struct PCIConfigurationSpcaeHeaderType0 {
     pub max_lat: u8,
 }
 
+#[derive(Debug)]
+#[repr(C)]
+pub struct VirtioPciCap {
+    pub cap_vndr: u8,
+    pub cap_next: u8,
+    pub cap_len: u8,
+    pub cfg_type: u8,
+    pub bar: u8,
+    pub id: u8,
+    pub padding: [u8; 2],
+    pub offset: u32,
+    pub length: u32,
+}
+
 pub fn list_pci(pci_base_addr: usize) {
     for dev_num in 0..(1 << 5) {
         for func_num in 0..(1 << 3) {
@@ -49,7 +65,7 @@ pub fn list_pci(pci_base_addr: usize) {
                 continue;
             }
             println!(
-                "vendor_id:device_id {:04x}:{:04x}",
+                "bus:dev:func {0}:{dev_num}:{func_num} vendor_id:device_id {:04x}:{:04x}",
                 config_space_header.vendor_id, config_space_header.device_id
             );
 
@@ -58,11 +74,30 @@ pub fn list_pci(pci_base_addr: usize) {
                 config_space_header.header_type, config_space_header.status
             );
             if config_space_header.header_type == 0 {
-                let type0_header = unsafe { &*(config_space_addr as *const PCIConfigurationSpcaeHeaderType0) };
-                println!("capabilities pointer {:x}", type0_header.capabilities_pointer);
+                let type0_header =
+                    unsafe { &*(config_space_addr as *const PCIConfigurationSpcaeHeaderType0) };
+                println!(
+                    "capabilities pointer {:x}",
+                    type0_header.capabilities_pointer
+                );
+                disp_cap_list(config_space_addr, type0_header.capabilities_pointer as usize);
             }
             println!("----------------");
         }
+    }
+}
+
+pub fn disp_cap_list(config_addr: usize, cap_pointer: usize) {
+    let mut cap_ptr = cap_pointer;
+    while cap_ptr != 0 {// next cap equals 0 means end of the chain
+        let addr = config_addr + cap_ptr;
+        let cap_vndr = unsafe { *(addr as *const u8) };
+        cap_ptr = unsafe { *((addr + 1) as *const u8) } as usize; //next cap
+        if cap_vndr != VENDOR_SPECIFIC {
+            continue;
+        }
+        let pci_cap = unsafe { &*(addr as *const VirtioPciCap) };
+        println!("{:?}", pci_cap);
     }
 }
 
