@@ -1,6 +1,6 @@
 use crate::{
     mem_utils,
-    memolayout::{VGA_FRAME_BUFFER, VGA_FRAME_BUFFER_SIZE, VGA_MMIO_BASE, PCI_BASE},
+    memolayout::{PCI_BASE, VGA_FRAME_BUFFER, VGA_FRAME_BUFFER_SIZE, VGA_MMIO_BASE},
     println,
     vm::kalloc,
 };
@@ -151,8 +151,14 @@ pub unsafe fn write_vga(addr: usize) {
     vga_mmio[0] = 0x0c;
 }
 
-pub fn test_write_bar(){
+pub fn test_write_bar() {
     let config_addr = find_device(PCI_BASE, 0x1af4, 0x1050).expect("can't find pci device");
-    let header = unsafe{&*(config_addr as *mut PCIConfigurationSpcaeHeaderType0)};
+    let header = unsafe { &*(config_addr as *mut PCIConfigurationSpcaeHeaderType0) };
     // header.base_address_registers
+    let my_bar: u32 = 0x9000_0000;
+
+    let addr = &header.base_address_registers[4] as *const u8 as u32 as *mut u32;
+    unsafe {
+        *addr = my_bar;
+    }
 }

@@ -23,6 +23,7 @@ mod virtio_gpu;
 
 use core::{arch::global_asm, panic::PanicInfo};
 use linked_list_allocator::LockedHeap;
+use pci::test_write_bar;
 use plic::plicinithart;
 use riscv::intr_on;
 use virtio::virtio_blk::virtio_disk_rw;
@@ -57,11 +58,14 @@ pub extern "C" fn main() -> ! {
     uart::console_init();
     plicinit();
     plicinithart();
-    // pci::list_pci(memolayout::PCI_BASE);
+    pci::list_pci(memolayout::PCI_BASE);
     // unsafe {
     //     pci::write_vga(memolayout::PCI_BASE + 1 * 8 * (1 << 12));
     // }
-    
+    test_write_bar();
+    loop {
+        
+    }
     intr_on();
     vm::kvminit();
     vm::kvminithart();
@@ -70,7 +74,6 @@ pub extern "C" fn main() -> ! {
     proc::userinit();
     virtio_disk_rw([0x75; 1024], true);
     //pci::list_pci(memolayout::PCI_BASE+1*8*(1<<12));
-    loop {}
     proc::scheduler();
 }
 
