@@ -154,5 +154,19 @@ pub unsafe fn write_vga(addr: usize) {
 pub fn test_write_bar(){
     let config_addr = find_device(PCI_BASE, 0x1af4, 0x1050).expect("can't find pci device");
     let header = unsafe{&*(config_addr as *mut PCIConfigurationSpcaeHeaderType0)};
+    let capability_struct_addr: usize=header.capabilities_pointer as usize + config_addr;
+    println!("cap_id: {:?}", unsafe{*(capability_struct_addr as *const u8)});
+    println!("next_cap: {:?}", unsafe{*((capability_struct_addr+1) as *const u8)});
+    println!("msi_mc: {:?}", unsafe{*((capability_struct_addr+2) as *const u8)});
+    println!("msi_mc: {:?}", unsafe{*((capability_struct_addr+3) as *const u8)});
+    unsafe {
+        let mut msix_enable=*((capability_struct_addr+2) as *const u16);
+        msix_enable |= 1<<15;
+        *((capability_struct_addr+2) as *mut u16) = msix_enable;
+    };
+    println!("cap_id: {:?}", unsafe{*(capability_struct_addr as *const u8)});
+    println!("next_cap: {:?}", unsafe{*((capability_struct_addr+1) as *const u8)});
+    println!("msi_mc: {:?}", unsafe{*((capability_struct_addr+2) as *const u8)});
+    println!("msi_mc: {:?}", unsafe{*((capability_struct_addr+3) as *const u8)});
     // header.base_address_registers
 }
