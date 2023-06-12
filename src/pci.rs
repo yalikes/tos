@@ -1,6 +1,6 @@
 use crate::{
     mem_utils,
-    memolayout::{VGA_FRAME_BUFFER, VGA_FRAME_BUFFER_SIZE, VGA_MMIO_BASE, PCI_BASE},
+    memolayout::{PCI_BASE, VGA_FRAME_BUFFER, VGA_FRAME_BUFFER_SIZE, VGA_MMIO_BASE},
     println,
     vm::kalloc,
 };
@@ -151,22 +151,70 @@ pub unsafe fn write_vga(addr: usize) {
     vga_mmio[0] = 0x0c;
 }
 
-pub fn test_write_bar(){
+pub fn test_write_bar() {
     let config_addr = find_device(PCI_BASE, 0x1af4, 0x1050).expect("can't find pci device");
-    let header = unsafe{&*(config_addr as *mut PCIConfigurationSpcaeHeaderType0)};
-    let capability_struct_addr: usize=header.capabilities_pointer as usize + config_addr;
-    println!("cap_id: {:?}", unsafe{*(capability_struct_addr as *const u8)});
-    println!("next_cap: {:?}", unsafe{*((capability_struct_addr+1) as *const u8)});
-    println!("msi_mc: {:?}", unsafe{*((capability_struct_addr+2) as *const u8)});
-    println!("msi_mc: {:?}", unsafe{*((capability_struct_addr+3) as *const u8)});
+    let header = unsafe { &*(config_addr as *mut PCIConfigurationSpcaeHeaderType0) };
+    let header_t = unsafe { &mut *(config_addr as *mut PCIConfigurationSpcaeHeader) };
+    let capability_struct_addr: usize = header.capabilities_pointer as usize + config_addr;
+    println!("cap_id: {:?}", unsafe {
+        *(capability_struct_addr as *const u8)
+    });
+    println!("next_cap: {:?}", unsafe {
+        *((capability_struct_addr + 1) as *const u8)
+    });
+    println!("msi_mc: {:?}", unsafe {
+        *((capability_struct_addr + 2) as *const u8)
+    });
+    println!("msi_mc: {:?}", unsafe {
+        *((capability_struct_addr + 3) as *const u8)
+    });
     unsafe {
-        let mut msix_enable=*((capability_struct_addr+2) as *const u16);
-        msix_enable |= 1<<15;
-        *((capability_struct_addr+2) as *mut u16) = msix_enable;
+        let mut msix_enable = *((capability_struct_addr + 2) as *const u16);
+        msix_enable |= 1 << 15;
+        *((capability_struct_addr + 2) as *mut u16) = msix_enable;
     };
-    println!("cap_id: {:?}", unsafe{*(capability_struct_addr as *const u8)});
-    println!("next_cap: {:?}", unsafe{*((capability_struct_addr+1) as *const u8)});
-    println!("msi_mc: {:?}", unsafe{*((capability_struct_addr+2) as *const u8)});
-    println!("msi_mc: {:?}", unsafe{*((capability_struct_addr+3) as *const u8)});
+    unsafe {
+        header_t.command = 6;
+    }
+    println!("cap_id: {:?}", unsafe {
+        *(capability_struct_addr as *const u8)
+    });
+    println!("next_cap: {:?}", unsafe {
+        *((capability_struct_addr + 1) as *const u8)
+    });
+    println!("msi_mc: {:?}", unsafe {
+        *((capability_struct_addr + 2) as *const u8)
+    });
+    println!("msi_mc: {:?}", unsafe {
+        *((capability_struct_addr + 3) as *const u8)
+    });
+
     // header.base_address_registers
+}
+
+pub fn test_bar(){
+    let config_addr = find_device(PCI_BASE, 0x1af4, 0x1050).expect("can't find pci device");
+    let header = unsafe { &*(config_addr as *mut PCIConfigurationSpcaeHeaderType0) };
+    let bar0 = &header.base_address_registers[0] as *const u8 as *mut u32;
+    let bar1 = &header.base_address_registers[4] as *const u8 as *mut u32;
+    let bar2 = &header.base_address_registers[8] as *const u8 as *mut u32;
+    let bar3 = &header.base_address_registers[12] as *const u8 as *mut u32;
+    let bar4 = &header.base_address_registers[16] as *const u8 as *mut u32;
+    let bar5 = &header.base_address_registers[20] as *const u8 as *mut u32;
+    unsafe {
+        *bar1 = 0xffff_ffff;
+        let r = *bar1;
+        println!("bar1 size: {}", (!r).wrapping_add(1));
+    }
+    unsafe {
+        *bar4 = 0xffff_ffff;
+        let r = *bar4;
+        println!("bar4 size: {}", (!r).wrapping_add(1));
+    }
+    unsafe{
+        // *bar1 = PCI_BASE as u32;//4K
+    }
+    unsafe{
+        *bar4 = VGA_FRAME_BUFFER as u32 + 0x1000;
+    }
 }

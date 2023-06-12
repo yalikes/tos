@@ -57,7 +57,9 @@ pub extern "C" fn main() -> ! {
     uart::console_init();
     plicinit();
     plicinithart();
-    pci::test_write_bar();
+    // pci::test_write_bar();
+    pci::test_bar();
+    
     // pci::list_pci(memolayout::PCI_BASE);
     // unsafe {
     //     pci::write_vga(memolayout::PCI_BASE + 1 * 8 * (1 << 12));
